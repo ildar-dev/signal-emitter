@@ -1,10 +1,14 @@
 {
+  "type": "module",
   "name": "ibkr-signal",
   "version": "1.0.0",
   "description": "IBKR signal emitter",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "build": "tsc",
+    "start-server": "node --experimental-modules dist/index.js"
   },
   "author": "Ildar Davletyarov",
   "license": "ISC",
@@ -12,5 +16,8 @@
     "nodemon": "^2.0.14",
     "ts-node": "^10.4.0",
     "typescript": "^4.4.4"
+  },
+  "dependencies": {
+    "ib-tws-api": "^1.3.0"
   }
 }
