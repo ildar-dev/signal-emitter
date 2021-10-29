@@ -1,0 +1,16 @@
+{
+  "name": "ibkr-signal",
+  "version": "1.0.0",
+  "description": "IBKR signal emitter",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ildar Davletyarov",
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^2.0.14",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.4.4"
+  }
+}
