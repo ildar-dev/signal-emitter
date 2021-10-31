@@ -1,12 +1,11 @@
 {
-  "type": "module",
   "name": "ibkr-signal",
   "version": "1.0.0",
   "description": "IBKR signal emitter",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "start": "node index.js",
+    "start": "ts-node index.ts",
     "build": "tsc",
     "start-server": "node --experimental-modules dist/index.js"
   },
@@ -18,6 +17,8 @@
     "typescript": "^4.4.4"
   },
   "dependencies": {
-    "ib-tws-api": "^1.3.0"
+    "@stoqey/ib": "^1.2.13",
+    "ib-tws-api": "^1.3.0",
+    "mongodb": "^4.1.3"
   }
 }

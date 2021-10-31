@@ -1,5 +1,19 @@
 import { Client, Contract, Order } from 'ib-tws-api';
 
+const mockData = {
+  messageId: 12341,
+  canallId: 'R2BC',
+  orderId: 12,
+  ticker: 'EURUSD',
+  type: 'BUY',
+  typeContract: 'LIMIT',
+  price: 40.56,
+  takeProfit: null,
+  stopLoss: null,
+  percentage: 0.5,
+  analitics: {},
+}
+
 
 
 async function run() {
