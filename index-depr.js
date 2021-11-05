@@ -1,5 +1,7 @@
 import { Client, Contract, Order } from 'ib-tws-api';
 
+// import { connect } from './mongodb';
+
 const mockData = {
   messageId: 12341,
   canallId: 'R2BC',
@@ -14,59 +16,68 @@ const mockData = {
   analitics: {},
 }
 
+const TOTAL_QUANTITY = 1;
+
+
+const handler = async (message, ib) => {
+  console.log('qq');
+  /* OPEN / BUY ORDER
+    {
+      ticker: 'EURUSD',
+      type: 'BUY',
+      typeContract: 'LIMIT',
+      price: 10.23,
+    }
+  */
+  if (message.type === 'BUY') {
+    console.log('buy');
+    const contract = Contract.forex(message.ticker);
+
+    console.log(1);
+
+    const order = Order.limit({
+      action: message.type,
+      lmtPrice: message.price,
+      totalQuantity: TOTAL_QUANTITY,
+    });
+
+    const orderId = ib.placeOrder(contract, order);
+
+    // save to collection(canallId) orderId > messageOrderId
+    // connect(async (db) => {
+    //   console.log('db');
+    //   await db.collection(message.canallId).insertOne({
+    //     orderId,
+    //     orderIdMessage: message.orderId,
+    //   })
+    // })
+
+    console.log('buyed');
+    return;
+  }
+};
+
 
 
 async function run() {
   let api = new Client({
     host: '127.0.0.1',
-    port: 7497
+    port: 7497,
+    clientId: 0,
   });
 
   console.log('api',api);
 
-  let order1 = await api.placeOrder({
-    contract: Contract.stock('AAPL'),
-    order: Order.limit({
-      action: 'BUY',
-      totalQuantity: 1,
-      lmtPrice: 0.01
-    })
-  });
+  await handler({
+    ticker: 'EURUSD',
+    type: 'BUY',
+    typeContract: 'LIMIT',
+    price: 10.23,
+  }, api)
 
-  let order2 = await api.placeOrder({
-    contract: Contract.stock('GOOG'),
-    order: Order.limit({
-      action: 'SELL',
-      totalQuantity: 1,
-      lmtPrice: 9999
-    })
-  });
-
-  // Check open orders
-  //api.reqGlobalCancel();
-
-  console.log('waiting a bit. listen to orderStatus events on production');
-  await new Promise(function(accept, _) {
-      setTimeout(function() {
-          accept();
-      }, 5000);
-  });
-
-  let orders = await api.getAllOpenOrders();
+  let orders = await api.getCurrentTime();
   console.log('Opened orders');
   console.log(orders);
-
-  // Cancel orders after 5 seconds.
-  setTimeout(async () => {
-    console.log('cancelling');
-    let reason1 = await api.cancelOrder(order1);
-    console.log(reason1);
-
-    let reason2 = await api.cancelOrder(order2);
-    console.log(reason2);
-
-//    ib.reqAllOpenOrders();
-  }, 5000);
 }
 
 

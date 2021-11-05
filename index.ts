@@ -1,72 +1,61 @@
-import { IBApi, EventName, ErrorCode, Contract, OrderType, SecType, Order, OrderAction, Forex } from "@stoqey/ib";
+import { IBApi, EventName, Position, ErrorCode, Contract, OrderType, SecType, Order, OrderAction, Forex, IBApiNext, AccountPositionsUpdate } from "@stoqey/ib";
+import { TMessage } from './types';
 
-import { connect, createCollectionIfNotExist } from './mongodb';
+import { connect } from './mongodb';
 
+import { takeUntil, Subject, first, lastValueFrom, firstValueFrom, Subscription } from 'rxjs';
 
-
-const CURRENCY = 'USD';
-
-const ACCOUNT_ID = 'kamilla11';
-
-const TOTAL = 2000;;
-
-const EACH_ORDER = 0.005;
-
-const TOTAL_QUANTITY = Math.ceil(TOTAL * EACH_ORDER);
-
-// create IBApi object
-
-const ib = new IBApi({
+const ib = new IBApiNext({
   // clientId: 0,
   host: '127.0.0.1',
   port: 7497,
 });
 
-type TMessage = {
-  messageId: number,
-  orderId: number,
-  canallId: string,
-  ticker: string,
-  type: 'BUY' | 'SELL' | 'CLOSE' | 'MODIFICATION',
-  typeContract: 'MARKET' | 'LIMIT',
-  price: number,
-  takeProfit: number,
-  stopLoss: number,
-  analitics: any,
-};
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-const handler = (message: TMessage) => {
-  /* OPEN / BUY ORDER
-    {
-      ticker: 'EURUSD',
-      type: 'BUY',
-      typeContract: 'LIMIT',
-      price: 10.23,
-    }
-  */
+let positions: AccountPositionsUpdate;
+
+let positionsSubscription = ib.getPositions().subscribe(_ => positions = _);
+
+const CURRENCY = 'USD';
+
+const ACCOUNT_ID = 'kamilla11';
+
+
+const handler = async (message: TMessage) => {
+  console.log(ib.isConnected);
   if (message.type === 'BUY') {
-    ib.once(EventName.nextValidId, (orderId: number) => {
-      const contract: Forex = new Forex(message.ticker, CURRENCY);
+    console.log('buy');
+    const split = message.ticker.split('.');
+    const contract: Contract = {
+      secType: SecType.CASH,
+      currency: split[1],
+      symbol: split[0],
+      exchange: 'IDEALPRO',
+    }
 
-      const order: Order = {
-        orderType: OrderType.LMT,
-        action: OrderAction.BUY,
-        lmtPrice: message.price,
+    const order: Order = {
+      orderType: message.typeContract === 'LIMIT' ? OrderType.LMT : OrderType.MKT,
+      action: OrderAction.BUY,
+      lmtPrice: message.typeContract === 'LIMIT' ? message.price : undefined,
+      totalQuantity: 100,
+      account: ACCOUNT_ID,
+      hedgeType: 'B',
+    };
+
+
+    const orderId = await ib.placeNewOrder(contract, order);
+
+
+    // save to collection(channelId) orderId > messageOrderId
+    await connect(async (db) => {
+      await db.collection(message.channelId).insertOne({
         orderId,
-        totalQuantity: TOTAL_QUANTITY,
-        account: ACCOUNT_ID,
-      };
-
-      // save to collection(R2BC) orderId > messageOrderId
-      connect(async (db) => {
-        db.collection(message.canallId).insertOne({
-          orderId,
-          orderIdMessage: message.orderId,
-        })
+        orderIdMessage: message.orderId,
+        data: Date.now,
       })
+    })
 
-      ib.placeOrder(orderId, contract, order);
-    });
     return;
   }
 
@@ -79,48 +68,75 @@ const handler = (message: TMessage) => {
     }
   */
 
-  if (message.type === 'SELL') {
-    ib.once(EventName.nextValidId, (orderId: number) => {
-      const contract: Forex = new Forex(message.ticker, CURRENCY);
+  if (message.type === 'SELL' || message.type === 'CLOSE') {
+    const contract: Forex = new Forex(message.ticker, CURRENCY);
 
-      const order: Order = {
-        orderType: OrderType.LMT,
-        action: OrderAction.BUY,
-        lmtPrice: message.price,
-        orderId,
-        totalQuantity: TOTAL_QUANTITY,
-        account: ACCOUNT_ID,
-      };
-      // вот здесь нужно сохранить в базу данных message.orderId => orderId
+    const orderId = await ib.getNextValidOrderId();
 
-      ib.placeOrder(orderId, contract, order);
-    });
+    const order: Order = {
+      orderType: OrderType.LMT,
+      action: OrderAction.SELL,
+      lmtPrice: message.price,
+      orderId,
+      totalQuantity: 1,
+      account: ACCOUNT_ID,
+      hedgeType: 'B',
+    };
+
+    ib.placeOrder(orderId, contract, order);
     return;
+  }
+
+  if (message.type === 'MODIFICATION') {
+    const contract: Forex = new Forex(message.ticker, CURRENCY);
+
+    const orderId = await ib.getNextValidOrderId();
+
+    const order: Order = {
+      orderType: OrderType.STP_LMT,
+      action: OrderAction.SELL,
+      lmtPrice: message.price,
+      orderId,
+      totalQuantity: 1,
+      account: ACCOUNT_ID,
+    };
   }
 
 };
 
-let positionsCount = 0;
+ib.connect();
 
-// ib.on(EventName.error, (err: Error, code: ErrorCode, reqId: number) => {
-//   console.error(`${err.message} - code: ${code} - reqId: ${reqId}`);
-// })
-//   .on(
-//     EventName.position,
-//     (account: string, contract: Contract, pos: number, avgCost?: number) => {
-//       console.log(`${account}: ${pos} x ${contract.symbol} @ ${avgCost}`);
-//       positionsCount++;
-//     }
-//   )
-//   .once(EventName.positionEnd, () => {
-//     console.log(`Total: ${positionsCount} positions.`);
-//     ib.disconnect();
-//   });
+sleep(1000)
+.then(async _ =>
+await handler(
+  {
+    messageId: 0,
+    orderId: 0,
+    channelId: 'Tested',
+    ticker: 'EUR.CHF',
+    type: 'BUY',
+    typeContract: 'MARKET',
+    price: 0.8,
+  }
+))
+.then(_ =>  
+  {
+    console.log(ib.isConnected);
+    positionsSubscription.unsubscribe();
+    ib.disconnect();
+    console.log(Array.from(positions.all.values()).flat().map(_ => _));
+  }
+);
 
-// // call API functions
-
-// console.log('alo');
-
-// ib.connect();
-
-// ib.reqPositions();
+// secType CASH
+// conId: 12087792,
+// symbol: 'EUR',
+// secType: 'CASH',
+// lastTradeDateOrContractMonth: '',
+// strike: 0,
+// right: undefined,
+// multiplier: 0,
+// exchange: '',
+// currency: 'USD',
+// localSymbol: 'EUR.USD',
+// tradingClass: 'EUR.USD'

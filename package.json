@@ -5,7 +5,9 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "start": "ts-node index.ts",
+    "start": "node index-depr.js",
+    "start:ts": "ts-node index.ts",
+    "start:ts-d": "ts-node index-depr.ts",
     "build": "tsc",
     "start-server": "node --experimental-modules dist/index.js"
   },
