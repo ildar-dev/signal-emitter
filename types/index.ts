@@ -1,16 +1,16 @@
 export enum EType {
-  OPEN = 'open',
-  CLOSE = 'close',
-  MODIFICATION = 'modification',
+  OPEN = 'OPEN',
+  CLOSE = 'CLOSE',
+  MODIFICATION = 'MODIFICATION',
 };
 
 export enum ETypeContract {
-  MARKET = 'market',
-  LIMIT = 'limit',
+  MARKET = 'MARKET',
+  LIMIT = 'LIMIT',
 }
 
 export enum EAction {
-  BUY = 'buy',
+  BUY = 'BUY',
   SELL = 'sell',
 }
 
@@ -20,7 +20,7 @@ export type TMessage = {
   channelId: string,
   ticker: string,
   type: EType,
-  typeContract: ETypeContract,
+  contractType: ETypeContract,
   price?: number,
   takeProfit?: number,
   previousTakeProfit?: number,

@@ -43,9 +43,9 @@ export const handler = async (message: TMessage) => {
     console.log('OPEN');
 
     const order: Order = {
-      orderType: message.typeContract === ETypeContract.LIMIT ? OrderType.LMT : OrderType.MKT,
+      orderType: message.contractType === ETypeContract.LIMIT ? OrderType.LMT : OrderType.MKT,
       action: message.action === EAction.BUY ? OrderAction.BUY : OrderAction.SELL,
-      lmtPrice: message.typeContract === ETypeContract.LIMIT ? message.price : undefined,
+      lmtPrice: message.contractType === ETypeContract.LIMIT ? message.price : undefined,
       totalQuantity: TOTAL_QUANTITY,
       openClose: 'O',
     };
@@ -162,7 +162,7 @@ export const handler = async (message: TMessage) => {
     }
   }
 
-  if (message.stopLoss !== undefined && !message.previousStopLoss && message.type === EType.OPEN) {
+  if (message.stopLoss !== null && !message.previousStopLoss && message.type === EType.OPEN) {
     console.log('STOPLOSS OPEN');
 
     const order: Order = {
@@ -189,7 +189,7 @@ export const handler = async (message: TMessage) => {
     })
   }
 
-  if (message.takeProfit !== undefined && !message.previousTakeProfit && message.type === EType.OPEN) {
+  if (message.takeProfit !== null && !message.previousTakeProfit && message.type === EType.OPEN) {
     console.log('TAKEPROFIT OPEN');
 
     const order: Order = {
