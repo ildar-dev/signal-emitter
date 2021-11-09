@@ -19,7 +19,7 @@
     "typescript": "^4.4.4"
   },
   "dependencies": {
-    "@stoqey/ib": "^1.2.13",
+    "@stoqey/ib": "^1.2.14",
     "ib-tws-api": "^1.3.0",
     "mongodb": "^4.1.3"
   }

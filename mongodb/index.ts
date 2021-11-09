@@ -5,23 +5,26 @@ export const mongoClient = new MongoClient("mongodb://localhost:27017/");
 
 export const DB_NAME = 'ibkr';
 
-export const connect = async (func: (db: Db, client: MongoClient) => Promise<void>, connectedClient: MongoClient | undefined = undefined) => {
+export const connect = async <T>(func: (db: Db, client: MongoClient) => Promise<T>, connectedClient: MongoClient | undefined = undefined): Promise<T | undefined> => {
+  let result: T | undefined = undefined;
   if (connectedClient) {
     try {
-      await func(mongoClient.db(DB_NAME), connectedClient);
+      result = await func(mongoClient.db(DB_NAME), connectedClient);
     } catch (error) {
       console.error(error)
     }
   } else {
     try {
       await mongoClient.connect();
-      await func(mongoClient.db(DB_NAME), mongoClient);
+      result = await func(mongoClient.db(DB_NAME), mongoClient);
     } catch (error) {
       console.error(error)
     } finally {
       await mongoClient.close();
     }
   }
+
+  return result;
 };
 
 export const createCollectionIfNotExist = async (colName: string, client: MongoClient) => {
