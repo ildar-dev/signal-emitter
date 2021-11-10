@@ -47,18 +47,17 @@ export const handler = async (message: TMessage) => {
       action: message.action === EAction.BUY ? OrderAction.BUY : OrderAction.SELL,
       lmtPrice: message.contractType === ETypeContract.LIMIT ? message.price : undefined,
       totalQuantity: TOTAL_QUANTITY,
-      openClose: 'O',
     };
 
 
-    ib.placeOrder(message.orderId, contract, order);
+    const orderId = ib.placeNewOrder(contract, order);
 
     await sleep(50);
 
     // save to collection(channelId) orderId > messageOrderId
     await connect(async (db) => {
       await db.collection(message.channelId).insertOne({
-        orderId: message.orderId,
+        orderId,
         orderType: 'OPEN',
         orderIdMessage: message.orderId,
         data: Date.now,
