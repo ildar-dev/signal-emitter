@@ -47,6 +47,7 @@ export const handler = async (message: TMessage) => {
       action: message.action === EAction.BUY ? OrderAction.BUY : OrderAction.SELL,
       lmtPrice: message.contractType === ETypeContract.LIMIT ? message.price : undefined,
       totalQuantity: TOTAL_QUANTITY,
+      transmit: true,
     };
 
 
@@ -82,7 +83,7 @@ export const handler = async (message: TMessage) => {
           action: message.action === EAction.BUY ? OrderAction.SELL : OrderAction.BUY, // wrapped action
           lmtPrice: message.takeProfit,
           totalQuantity: TOTAL_QUANTITY,
-          openClose: 'O',
+          transmit: true,
         };
         ib.cancelOrder(takeProfitOrderId);
         console.log('delete', takeProfitOrderId);
@@ -114,6 +115,7 @@ export const handler = async (message: TMessage) => {
           auxPrice: message.stopLoss,
           action: message.action === EAction.BUY ? OrderAction.SELL : OrderAction.BUY, // wrapped action
           totalQuantity: TOTAL_QUANTITY,
+          transmit: true,
         };
         ib.cancelOrder(stopLossOrderId);
         console.log('delete', stopLossOrderId);
@@ -149,7 +151,7 @@ export const handler = async (message: TMessage) => {
         action: message.action === EAction.BUY ? OrderAction.SELL : OrderAction.BUY,
         lmtPrice: message.price,
         totalQuantity: 1,
-        openClose: 'O',
+        transmit: true,
       };
       await ib.placeNewOrder(contract, order);
 
@@ -161,7 +163,7 @@ export const handler = async (message: TMessage) => {
     }
   }
 
-  if (message.stopLoss !== null && !message.previousStopLoss && message.type === EType.OPEN) {
+  if (message.stopLoss && !message.previousStopLoss && message.type === EType.OPEN) {
     console.log('STOPLOSS OPEN');
 
     const order: Order = {
@@ -169,8 +171,8 @@ export const handler = async (message: TMessage) => {
       action: message.action === EAction.BUY ? OrderAction.SELL : OrderAction.BUY, // wrapped action
       auxPrice: message.stopLoss,
       totalQuantity: TOTAL_QUANTITY,
+      transmit: true,
     };
-
 
     const orderId = await ib.placeNewOrder(contract, order);
 
@@ -188,7 +190,7 @@ export const handler = async (message: TMessage) => {
     })
   }
 
-  if (message.takeProfit !== null && !message.previousTakeProfit && message.type === EType.OPEN) {
+  if (message.takeProfit && !message.previousTakeProfit && message.type === EType.OPEN) {
     console.log('TAKEPROFIT OPEN');
 
     const order: Order = {
@@ -196,6 +198,7 @@ export const handler = async (message: TMessage) => {
       action: message.action === EAction.BUY ? OrderAction.SELL : OrderAction.BUY, // wrapped action
       lmtPrice: message.takeProfit,
       totalQuantity: TOTAL_QUANTITY,
+      transmit: true,
     };
 
     const orderId = await ib.placeNewOrder(contract, order);
