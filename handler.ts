@@ -138,29 +138,30 @@ export const handler = async (message: TMessage) => {
     const openOrders = (await ib.getAllOpenOrders()).map(_ => _.orderId);
 
     const orderIds = await connect(async (db) => {
-      const query = { $or: [ {orderType: 'STOPLOSS', orderIdMessage: message.orderId }, {orderType: 'TAKEPROFIT', orderIdMessage: message.orderId }] };
+      const query = { $or: [{ orderType: 'STOPLOSS', orderIdMessage: message.orderId }, { orderType: 'TAKEPROFIT', orderIdMessage: message.orderId }] };
       const document = await (db.collection(message.channelId).find({ orderIdMessage: message.orderId })).toArray();
       await db.collection(message.channelId).deleteMany(query);
 
-      return document.map(_ => _.orderId);
+      return document.filter(_ => _.orderId && typeof _.orderId === 'number').map(_ => _.orderId);
     })
 
+    console.log(orderIds, openOrders);
     if (orderIds?.every(id => openOrders?.includes(id))) { // true если не закрылся по лимитке (ордер не исполнился)
       const order: Order = {
-        orderType: OrderType.LMT,
+        orderType: OrderType.MKT,
         action: message.action === EAction.BUY ? OrderAction.SELL : OrderAction.BUY,
-        lmtPrice: message.price,
-        totalQuantity: 1,
+        totalQuantity: TOTAL_QUANTITY,
         transmit: true,
       };
+      console.log('close before limit');
       await ib.placeNewOrder(contract, order);
-
-      const openOrderIdOfClosed = openOrders.filter(value => orderIds.includes(value));
-
-      openOrderIdOfClosed.forEach(i => {
-        ib.cancelOrder(i);
-      });
     }
+
+    const openOrderIdOfClosed = openOrders.filter(value => orderIds?.includes(value));
+
+    openOrderIdOfClosed.forEach(i => {
+      ib.cancelOrder(i);
+    });
   }
 
   if (message.stopLoss && !message.previousStopLoss && message.type === EType.OPEN) {
