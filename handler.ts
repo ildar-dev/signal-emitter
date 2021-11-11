@@ -91,7 +91,7 @@ export const handler = async (message: TMessage) => {
         const orderId = await ib.placeNewOrder(contract, order);
         await connect(async (db) => {
           await db.collection(message.channelId).insertOne({
-            orderId: orderId,
+            orderId,
             orderType: 'TAKEPROFIT',
             orderIdMessage: message.orderId,
             data: Date.now,
@@ -123,7 +123,7 @@ export const handler = async (message: TMessage) => {
         const orderId = await ib.placeNewOrder(contract, order);
         await connect(async (db) => {
           await db.collection(message.channelId).insertOne({
-            orderId: orderId,
+            orderId,
             orderType: 'STOPLOSS',
             orderIdMessage: message.orderId,
             data: Date.now,
