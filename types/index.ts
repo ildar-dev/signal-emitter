@@ -1,3 +1,11 @@
+export type TDocumentOrder = {
+  orderId: number,
+  orderType: EOrderType,
+  orderIdMessage: number,
+  date: number,
+  message: TMessage,
+}
+
 export enum EType {
   OPEN = 'OPEN',
   CLOSE = 'CLOSE',

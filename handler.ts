@@ -1,5 +1,7 @@
-import { Contract, OrderType, SecType, Order, OrderAction, IBApiNext, ConnectionState } from '@stoqey/ib';
-import { TMessage, EAction, ETypeContract, EType, EOrderType } from './types';
+import { Contract, SecType, IBApiNext, ConnectionState } from '@stoqey/ib';
+import { TMessage, EType, EOrderType, TDocumentOrder } from './types';
+
+import { getOpenOrder, sleep, getCloseOrder, getContract, getDocument, modificatePendingOrder, openPendingOrder } from './helpers/handler';
 
 import { connect } from './mongodb';
 
@@ -13,9 +15,7 @@ const ib = new IBApiNext({
 });
 
 const saveCallBack = (messages: TLog[]) => {
-  connect(async (db) => {
-    await db.collection('LOG_DB').insertMany(messages);
-  });
+  connect((db) => db.collection('LOG_DB').insertMany(messages));
 };
 
 const logger = new Logger(ELogLevel.ALL, saveCallBack);
@@ -26,210 +26,78 @@ ib.error.subscribe((error) => {
   logger.add('ERROR subscribed,', `${error.error.message}`);
 });
 
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-const waitConnection = async () => {
+const waitConnection = () => {
   const s = ib.connectionState.pipe(takeWhile(c => c !== ConnectionState.Connected, true));
   s.subscribe(_ => { logger.add('CHECK CONNECT', _) });
-  return await lastValueFrom(s);
+  return lastValueFrom(s);
 }
 
-const TOTAL_QUANTITY = 100;
-
 export const handler = async (message: TMessage) => {
-  logger.setMessage(message);
   const timeStart = performance.now();
+  logger.setMessage(message);
   if (!ib.isConnected) {
+    logger.add('DOES NOT CONNECTED');
     await sleep(1000);
     await waitConnection();
+    logger.add('TRY CONNECTED', ib.isConnected);
   }
-  const split = message.ticker.split('.');
-  const contract: Contract = {
-    secType: SecType.CASH,
-    currency: split[1],
-    symbol: split[0],
-    exchange: 'IDEALPRO',
-  }
-  if (message.type === EType.OPEN && message.price) {
-    logger.add('OPEN');
-
-    const order: Order = {
-      orderType: message.contractType === ETypeContract.LIMIT ? OrderType.LMT : OrderType.MKT,
-      action: message.action === EAction.BUY ? OrderAction.BUY : OrderAction.SELL,
-      lmtPrice: message.contractType === ETypeContract.LIMIT ? message.price : undefined,
-      totalQuantity: TOTAL_QUANTITY,
-      transmit: true,
-    };
-
-
-    const orderId = ib.placeNewOrder(contract, order);
-
-    // save to collection(channelId) orderId > messageOrderId
-    await connect(async (db) => {
-      await db.collection(message.channelId).insertOne({
-        orderId,
-        orderType: 'OPEN',
-        orderIdMessage: message.orderId,
-        data: Date.now,
-        message,
-      })
-    })
-  }
-
-  if (message.type === EType.MODIFICATION) {
-
-    if (message.takeProfit) {
-      const takeProfitOrderId = await connect(async (db) => {
-        const document = await db.collection(message.channelId).findOneAndDelete({ orderType: 'TAKEPROFIT', orderIdMessage: message.orderId });
-        return document.value?.orderId as number
-      })
-
-      logger.add('takeProfitOrderId', takeProfitOrderId);
-
-      if (takeProfitOrderId) {
-        const order: Order = {
-          orderType: OrderType.LMT,
-          action: message.action === EAction.BUY ? OrderAction.SELL : OrderAction.BUY, // wrapped action
-          lmtPrice: message.takeProfit,
-          totalQuantity: TOTAL_QUANTITY,
-          transmit: true,
-        };
-        ib.cancelOrder(takeProfitOrderId);
-        logger.add('delete', takeProfitOrderId);
-
+  const contract = getContract(message);
+  switch (message.type) {
+    case EType.OPEN: {
+      let openOrderDb: TDocumentOrder;
+      let stopLossOrderDb: TDocumentOrder;
+      let takeProfitOrderDb: TDocumentOrder;
+      if (message.price) {
+        logger.add('OPEN');
+        const order = getOpenOrder(message);
         const orderId = await ib.placeNewOrder(contract, order);
-        connect(async (db) => {
-          await db.collection(message.channelId).insertOne({
-            orderId,
-            orderType: EOrderType.TAKEPROFIT,
-            orderIdMessage: message.orderId,
-            data: Date.now,
-            message,
-          })
-        })
-      } else {
-        logger.error('TRY MODIFY TP WITHOUT PARENT');
+        openOrderDb = getDocument(orderId, EOrderType.OPEN, message);
+      }
+
+      if (message.stopLoss) {
+        stopLossOrderDb = await openPendingOrder(EOrderType.STOPLOSS, message, logger, ib, contract);
+      }
+      if (message.takeProfit) {
+        takeProfitOrderDb = await openPendingOrder(EOrderType.TAKEPROFIT, message, logger, ib, contract);
+      }
+
+      connect(async (db) => {
+        await db.collection(message.channelId).insertMany([openOrderDb, stopLossOrderDb, takeProfitOrderDb].filter(_ => _))
+      })
+    }
+    case EType.MODIFICATION: {
+      if (message.takeProfit) {
+        await modificatePendingOrder(EOrderType.TAKEPROFIT, message, logger, ib, contract);
+      }
+      if (message.stopLoss) {
+        await modificatePendingOrder(EOrderType.STOPLOSS, message, logger, ib, contract);
       }
     }
+    case EType.CLOSE: {
+      const openOrders = (await ib.getAllOpenOrders()).map(_ => _.orderId);
 
-    if (message.stopLoss) {
-      const stopLossOrderId = await connect(async (db) => {
-        const document = await db.collection(message.channelId).findOneAndDelete({ orderType: 'STOPLOSS', orderIdMessage: message.orderId });
-        return document.value?.orderId as number
+      const orderIds = await connect(async (db) => {
+        const query = { $or: [{ orderType: EOrderType.STOPLOSS, orderIdMessage: message.orderId }, { orderType: EOrderType.TAKEPROFIT, orderIdMessage: message.orderId }] };
+        const document = await (db.collection(message.channelId).find({ orderIdMessage: message.orderId })).toArray();
+        await db.collection(message.channelId).deleteMany(query); // instant delete documents
+  
+        return document.filter(_ => _.orderId && typeof _.orderId === 'number').map(_ => _.orderId);
       })
-
-      logger.add('stopLossOrderId', stopLossOrderId);
-
-      if (stopLossOrderId) {
-        const order: Order = {
-          orderType: OrderType.STP,
-          auxPrice: message.stopLoss,
-          action: message.action === EAction.BUY ? OrderAction.SELL : OrderAction.BUY, // wrapped action
-          totalQuantity: TOTAL_QUANTITY,
-          transmit: true,
-        };
-        ib.cancelOrder(stopLossOrderId);
-        logger.add('delete', stopLossOrderId);
-        const orderId = await ib.placeNewOrder(contract, order);
-        connect(async (db) => {
-          await db.collection(message.channelId).insertOne({
-            orderId,
-            orderType: EOrderType.STOPLOSS,
-            orderIdMessage: message.orderId,
-            data: Date.now,
-            message,
-          })
-        })
-      } else {
-        logger.error('TRY MODIFY SL WITHOUT PARENT');
+  
+      console.log(orderIds, openOrders);
+      if (orderIds?.every(id => openOrders?.includes(id))) { // true if does not close for limit orders (need close manually)
+        const order = getCloseOrder(message);
+        logger.add('CLOSE BEFORE LIMIT EXECUTION');
+        await ib.placeNewOrder(contract, order);
       }
+  
+      const openOrderIdOfClosed = openOrders.filter(value => orderIds?.includes(value));
+  
+      openOrderIdOfClosed.forEach(i => { ib.cancelOrder(i); });
     }
-  }
-
-  if (message.type === EType.CLOSE) {
-    const openOrders = (await ib.getAllOpenOrders()).map(_ => _.orderId);
-
-    const orderIds = await connect(async (db) => {
-      const query = { $or: [{ orderType: EOrderType.STOPLOSS, orderIdMessage: message.orderId }, { orderType: EOrderType.TAKEPROFIT, orderIdMessage: message.orderId }] };
-      const document = await (db.collection(message.channelId).find({ orderIdMessage: message.orderId })).toArray();
-      await db.collection(message.channelId).deleteMany(query);
-
-      return document.filter(_ => _.orderId && typeof _.orderId === 'number').map(_ => _.orderId);
-    })
-
-    console.log(orderIds, openOrders);
-    if (orderIds?.every(id => openOrders?.includes(id))) { // true если не закрылся по лимитке (ордер не исполнился)
-      const order: Order = {
-        orderType: OrderType.MKT,
-        action: message.action === EAction.BUY ? OrderAction.SELL : OrderAction.BUY,
-        totalQuantity: TOTAL_QUANTITY,
-        transmit: true,
-      };
-      logger.add('close before limit');
-      await ib.placeNewOrder(contract, order);
-    }
-
-    const openOrderIdOfClosed = openOrders.filter(value => orderIds?.includes(value));
-
-    openOrderIdOfClosed.forEach(i => {
-      ib.cancelOrder(i);
-    });
-  }
-
-  if (message.stopLoss && !message.previousStopLoss && message.type === EType.OPEN) {
-    logger.add('STOPLOSS OPEN');
-
-    const order: Order = {
-      orderType: OrderType.STP,
-      action: message.action === EAction.BUY ? OrderAction.SELL : OrderAction.BUY, // wrapped action
-      auxPrice: message.stopLoss,
-      totalQuantity: TOTAL_QUANTITY,
-      transmit: true,
-    };
-
-    const orderId = await ib.placeNewOrder(contract, order);
-
-    console.log(orderId);
-
-    // save to collection(channelId) orderId > messageOrderId
-    await connect(async (db) => {
-      await db.collection(message.channelId).insertOne({
-        orderId,
-        orderType: EOrderType.STOPLOSS,
-        orderIdMessage: message.orderId,
-        data: Date.now,
-        message,
-      })
-    })
-  }
-
-  if (message.takeProfit && !message.previousTakeProfit && message.type === EType.OPEN) {
-    logger.add('TAKEPROFIT OPEN');
-
-    const order: Order = {
-      orderType: OrderType.LMT,
-      action: message.action === EAction.BUY ? OrderAction.SELL : OrderAction.BUY, // wrapped action
-      lmtPrice: message.takeProfit,
-      totalQuantity: TOTAL_QUANTITY,
-      transmit: true,
-    };
-
-    const orderId = await ib.placeNewOrder(contract, order);
-    console.log(orderId);
-
-    // save to collection(channelId) orderId > messageOrderId
-    await connect(async (db) => {
-      await db.collection(message.channelId).insertOne({
-        orderId,
-        orderType: EOrderType.TAKEPROFIT,
-        orderIdMessage: message.orderId,
-        data: Date.now,
-        message,
-      })
-    })
   }
 
   const timeFinish = performance.now();
   
-  logger.add('PERFOMANCE', timeFinish - timeStart);
+  logger.add('HANDLE EXECUTION', timeFinish - timeStart);
 };
