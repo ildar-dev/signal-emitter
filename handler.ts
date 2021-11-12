@@ -1,33 +1,44 @@
-import { IBApi, EventName, Position, ErrorCode, Contract, OrderType, SecType, Order, OrderAction, Forex, IBApiNext, AccountPositionsUpdate, ConnectionState } from "@stoqey/ib";
-import { TMessage, EAction, ETypeContract, EType } from './types';
+import { Contract, OrderType, SecType, Order, OrderAction, IBApiNext, ConnectionState } from '@stoqey/ib';
+import { TMessage, EAction, ETypeContract, EType, EOrderType } from './types';
 
 import { connect } from './mongodb';
 
-import { takeUntil, Subject, first, lastValueFrom, takeWhile, firstValueFrom, Subscription } from 'rxjs';
+import { Logger, TLog, ELogLevel } from './logger';
+
+import { lastValueFrom, takeWhile } from 'rxjs';
 
 const ib = new IBApiNext({
   host: '127.0.0.1',
   port: 7497,
 });
 
+const saveCallBack = (messages: TLog[]) => {
+  connect(async (db) => {
+    await db.collection('LOG_DB').insertMany(messages);
+  });
+};
+
+const logger = new Logger(ELogLevel.ALL, saveCallBack);
+
 ib.connect(0);
 
 ib.error.subscribe((error) => {
-  console.error('ERROR subscribed,', `${error.error.message}`);
+  logger.add('ERROR subscribed,', `${error.error.message}`);
 });
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const waitConnection = async () => {
   const s = ib.connectionState.pipe(takeWhile(c => c !== ConnectionState.Connected, true));
-  s.subscribe(_ => { console.log(_, 'CHECK CONNECT') });
+  s.subscribe(_ => { logger.add('CHECK CONNECT', _) });
   return await lastValueFrom(s);
 }
 
 const TOTAL_QUANTITY = 100;
 
 export const handler = async (message: TMessage) => {
-  const timeStart = performance.now;
+  logger.setMessage(message);
+  const timeStart = performance.now();
   if (!ib.isConnected) {
     await sleep(1000);
     await waitConnection();
@@ -40,7 +51,7 @@ export const handler = async (message: TMessage) => {
     exchange: 'IDEALPRO',
   }
   if (message.type === EType.OPEN && message.price) {
-    console.log('OPEN');
+    logger.add('OPEN');
 
     const order: Order = {
       orderType: message.contractType === ETypeContract.LIMIT ? OrderType.LMT : OrderType.MKT,
@@ -52,8 +63,6 @@ export const handler = async (message: TMessage) => {
 
 
     const orderId = ib.placeNewOrder(contract, order);
-
-    await sleep(50);
 
     // save to collection(channelId) orderId > messageOrderId
     await connect(async (db) => {
@@ -75,7 +84,7 @@ export const handler = async (message: TMessage) => {
         return document.value?.orderId as number
       })
 
-      console.log('takeProfitOrderId', takeProfitOrderId);
+      logger.add('takeProfitOrderId', takeProfitOrderId);
 
       if (takeProfitOrderId) {
         const order: Order = {
@@ -86,18 +95,20 @@ export const handler = async (message: TMessage) => {
           transmit: true,
         };
         ib.cancelOrder(takeProfitOrderId);
-        console.log('delete', takeProfitOrderId);
-        await sleep(50);
+        logger.add('delete', takeProfitOrderId);
+
         const orderId = await ib.placeNewOrder(contract, order);
-        await connect(async (db) => {
+        connect(async (db) => {
           await db.collection(message.channelId).insertOne({
             orderId,
-            orderType: 'TAKEPROFIT',
+            orderType: EOrderType.TAKEPROFIT,
             orderIdMessage: message.orderId,
             data: Date.now,
             message,
           })
         })
+      } else {
+        logger.error('TRY MODIFY TP WITHOUT PARENT');
       }
     }
 
@@ -107,7 +118,7 @@ export const handler = async (message: TMessage) => {
         return document.value?.orderId as number
       })
 
-      console.log('stopLossOrderId', stopLossOrderId);
+      logger.add('stopLossOrderId', stopLossOrderId);
 
       if (stopLossOrderId) {
         const order: Order = {
@@ -118,18 +129,19 @@ export const handler = async (message: TMessage) => {
           transmit: true,
         };
         ib.cancelOrder(stopLossOrderId);
-        console.log('delete', stopLossOrderId);
-        await sleep(50);
+        logger.add('delete', stopLossOrderId);
         const orderId = await ib.placeNewOrder(contract, order);
-        await connect(async (db) => {
+        connect(async (db) => {
           await db.collection(message.channelId).insertOne({
             orderId,
-            orderType: 'STOPLOSS',
+            orderType: EOrderType.STOPLOSS,
             orderIdMessage: message.orderId,
             data: Date.now,
             message,
           })
         })
+      } else {
+        logger.error('TRY MODIFY SL WITHOUT PARENT');
       }
     }
   }
@@ -138,7 +150,7 @@ export const handler = async (message: TMessage) => {
     const openOrders = (await ib.getAllOpenOrders()).map(_ => _.orderId);
 
     const orderIds = await connect(async (db) => {
-      const query = { $or: [{ orderType: 'STOPLOSS', orderIdMessage: message.orderId }, { orderType: 'TAKEPROFIT', orderIdMessage: message.orderId }] };
+      const query = { $or: [{ orderType: EOrderType.STOPLOSS, orderIdMessage: message.orderId }, { orderType: EOrderType.TAKEPROFIT, orderIdMessage: message.orderId }] };
       const document = await (db.collection(message.channelId).find({ orderIdMessage: message.orderId })).toArray();
       await db.collection(message.channelId).deleteMany(query);
 
@@ -153,7 +165,7 @@ export const handler = async (message: TMessage) => {
         totalQuantity: TOTAL_QUANTITY,
         transmit: true,
       };
-      console.log('close before limit');
+      logger.add('close before limit');
       await ib.placeNewOrder(contract, order);
     }
 
@@ -165,7 +177,7 @@ export const handler = async (message: TMessage) => {
   }
 
   if (message.stopLoss && !message.previousStopLoss && message.type === EType.OPEN) {
-    console.log('STOPLOSS OPEN');
+    logger.add('STOPLOSS OPEN');
 
     const order: Order = {
       orderType: OrderType.STP,
@@ -183,7 +195,7 @@ export const handler = async (message: TMessage) => {
     await connect(async (db) => {
       await db.collection(message.channelId).insertOne({
         orderId,
-        orderType: 'STOPLOSS',
+        orderType: EOrderType.STOPLOSS,
         orderIdMessage: message.orderId,
         data: Date.now,
         message,
@@ -192,7 +204,7 @@ export const handler = async (message: TMessage) => {
   }
 
   if (message.takeProfit && !message.previousTakeProfit && message.type === EType.OPEN) {
-    console.log('TAKEPROFIT OPEN');
+    logger.add('TAKEPROFIT OPEN');
 
     const order: Order = {
       orderType: OrderType.LMT,
@@ -209,7 +221,7 @@ export const handler = async (message: TMessage) => {
     await connect(async (db) => {
       await db.collection(message.channelId).insertOne({
         orderId,
-        orderType: 'TAKEPROFIT',
+        orderType: EOrderType.TAKEPROFIT,
         orderIdMessage: message.orderId,
         data: Date.now,
         message,
@@ -217,6 +229,7 @@ export const handler = async (message: TMessage) => {
     })
   }
 
-  const timeFinish = performance.now;
-  // @todo send to mongodb execution time
+  const timeFinish = performance.now();
+  
+  logger.add('PERFOMANCE', timeFinish - timeStart);
 };

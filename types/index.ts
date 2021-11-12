@@ -4,6 +4,13 @@ export enum EType {
   MODIFICATION = 'MODIFICATION',
 };
 
+export enum EOrderType {
+  OPEN = 'OPEN',
+  CLOSE = 'CLOSE',
+  TAKEPROFIT = 'TAKEPROFIT',
+  STOPLOSS = 'STOPLOSS',
+}
+
 export enum ETypeContract {
   MARKET = 'MARKET',
   LIMIT = 'LIMIT',

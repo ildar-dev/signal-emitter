@@ -37,4 +37,4 @@ const server = http.createServer((request: any, response: any) => {
 });
 
 console.log('START LISTEN');
-server.listen(1222, '172.17.0.1');
+server.listen(1222, '127.0.0.1');
