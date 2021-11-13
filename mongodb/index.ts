@@ -6,7 +6,7 @@ export const mongoClient = new MongoClient("mongodb://localhost:27017/");
 export const DB_NAME = 'ibkr';
 
 export const connect = async <T>(func: (db: Db, client: MongoClient) => Promise<T>, connectedClient: MongoClient | undefined = undefined): Promise<T> => {
-  let result: T | undefined = undefined;
+  let result: T | null = null;
   if (connectedClient) {
     try {
       result = await func(mongoClient.db(DB_NAME), connectedClient);
@@ -24,7 +24,7 @@ export const connect = async <T>(func: (db: Db, client: MongoClient) => Promise<
     }
   }
 
-  return result;
+  return result as T;
 };
 
 export const createCollectionIfNotExist = async (colName: string, client: MongoClient) => {

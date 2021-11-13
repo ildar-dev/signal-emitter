@@ -3,7 +3,7 @@ import { TMessage, EAction, ETypeContract, EOrderType, TDocumentOrder } from '..
 import { connect } from '../mongodb';
 import { Logger } from '../logger';
 
-const TOTAL_QUANTITY = 100;
+const TOTAL_QUANTITY = 20000;
 
 const preOrder: Order = {
   totalQuantity: TOTAL_QUANTITY,

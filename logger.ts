@@ -13,6 +13,15 @@ export type TLog = {
   order?: TMessage,
 }
 
+const formatter = new Intl.DateTimeFormat('ru', {
+  day: '2-digit',
+  month: '2-digit',
+  year: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+});
+
 export class Logger {
   messages: TLog[] = [];
 
@@ -41,10 +50,10 @@ export class Logger {
   }
 
   add(message: string, meta?: any, level = this.level) {
-    const date = Date.now().toString();
+    const date = formatter.format(Date.now());
     const order = this.currentOrder;
     if (this.hasConsoleLog) {
-      console[this.level === ELogLevel.ERROR ? 'error' : 'log'](message, meta, date, order);
+      console[this.level === ELogLevel.ERROR ? 'error' : 'log'](...[message, meta, date, order].filter(_ => _));
     }
 
     if (this.isEnable) {

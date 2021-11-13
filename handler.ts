@@ -58,6 +58,7 @@ export const handler = async (message: TMessage) => {
       connect(async (db) => {
         await db.collection(message.channelId).insertMany([openOrderDb, stopLossOrderDb, takeProfitOrderDb].filter(_ => _))
       })
+      break;
     }
     case EType.MODIFICATION: {
       if (message.takeProfit) {
@@ -66,6 +67,7 @@ export const handler = async (message: TMessage) => {
       if (message.stopLoss) {
         await modificatePendingOrder(EOrderType.STOPLOSS, message, logger, ib, contract);
       }
+      break;
     }
     case EType.CLOSE: {
       const openOrders = (await ib.getAllOpenOrders()).map(_ => _.orderId);
@@ -90,6 +92,7 @@ export const handler = async (message: TMessage) => {
       openOrders
         .filter(value => pendingOrders?.includes(value))
         .forEach(i => { ib.cancelOrder(i); }); // clear old pending orders for this closed order
+      break;
     }
   }
 
