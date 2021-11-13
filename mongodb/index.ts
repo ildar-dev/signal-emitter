@@ -5,7 +5,7 @@ export const mongoClient = new MongoClient("mongodb://localhost:27017/");
 
 export const DB_NAME = 'ibkr';
 
-export const connect = async <T>(func: (db: Db, client: MongoClient) => Promise<T>, connectedClient: MongoClient | undefined = undefined): Promise<T | undefined> => {
+export const connect = async <T>(func: (db: Db, client: MongoClient) => Promise<T>, connectedClient: MongoClient | undefined = undefined): Promise<T> => {
   let result: T | undefined = undefined;
   if (connectedClient) {
     try {

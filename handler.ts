@@ -70,24 +70,26 @@ export const handler = async (message: TMessage) => {
     case EType.CLOSE: {
       const openOrders = (await ib.getAllOpenOrders()).map(_ => _.orderId);
 
-      const orderIds = await connect(async (db) => {
+      const { pendingOrders, openOrderId } = await connect(async (db) => {
         const query = { $or: [{ orderType: EOrderType.STOPLOSS, orderIdMessage: message.orderId }, { orderType: EOrderType.TAKEPROFIT, orderIdMessage: message.orderId }] };
-        const document = await (db.collection(message.channelId).find({ orderIdMessage: message.orderId })).toArray();
+        const openOrderId = (await db.collection(message.channelId).findOne({ orderType: EOrderType.OPEN, orderIdMessage: message.orderId }) as TDocumentOrder).orderId;
+        const pendingOrders: number[] = (await (db.collection(message.channelId).find(query)).toArray()).filter(_ => _.orderId && typeof _.orderId === 'number').map(_ => _.orderId);
         await db.collection(message.channelId).deleteMany(query); // instant delete documents
-  
-        return document.filter(_ => _.orderId && typeof _.orderId === 'number').map(_ => _.orderId);
-      })
-  
-      console.log(orderIds, openOrders);
-      if (orderIds?.every(id => openOrders?.includes(id))) { // true if does not close for limit orders (need close manually)
+        return {
+          pendingOrders,
+          openOrderId,
+        };
+      });
+      logger.add('CLOSE', { pendingOrders, openOrders });
+      if (openOrderId && pendingOrders?.every(id => openOrders?.includes(id))) { // true if does not close for limit orders (need close manually)
         const order = getCloseOrder(message);
         logger.add('CLOSE BEFORE LIMIT EXECUTION');
         await ib.placeNewOrder(contract, order);
       }
   
-      const openOrderIdOfClosed = openOrders.filter(value => orderIds?.includes(value));
-  
-      openOrderIdOfClosed.forEach(i => { ib.cancelOrder(i); });
+      openOrders
+        .filter(value => pendingOrders?.includes(value))
+        .forEach(i => { ib.cancelOrder(i); }); // clear old pending orders for this closed order
     }
   }
 
