@@ -1,24 +1,18 @@
-import { Contract, SecType, IBApiNext, ConnectionState } from '@stoqey/ib';
+import { IBApiNext, ConnectionState } from '@stoqey/ib';
 import { TMessage, EType, EOrderType, TDocumentOrder } from './types';
-
 import { getOpenOrder, sleep, getCloseOrder, getContract, getDocument, modificatePendingOrder, openPendingOrder } from './helpers/handler';
-
 import { connect } from './mongodb';
-
 import { Logger, TLog, ELogLevel } from './logger';
-
 import { lastValueFrom, takeWhile } from 'rxjs';
+import config from './config.json';
 
-const ib = new IBApiNext({
-  host: '127.0.0.1',
-  port: 7497,
-});
+const ib = new IBApiNext(config.receiver);
 
 const saveCallBack = (messages: TLog[]) => {
-  connect((db) => db.collection('LOG_DB').insertMany(messages));
+  connect((db) => db.collection(config.log.dbName).insertMany(messages));
 };
 
-const logger = new Logger(ELogLevel.ALL, saveCallBack);
+const logger = new Logger(ELogLevel.ALL, saveCallBack, config.log.hasConsoleOutput, config.log.frequency, config.log.isEnable);
 
 ib.connect(0);
 

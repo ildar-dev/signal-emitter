@@ -2,11 +2,13 @@ import http from 'http';
 import { handler } from './handler';
 import { TMessage } from './types';
 
+import config from './config.json';
+
 const server = http.createServer((request: any, response: any) => {
     let data = '';
 
     if (request.method === "GET") {
-        data = 'get hello';
+        data = 'GET RESPONSE';
     } else if (request.method === "POST") {
         let data = '';
 
@@ -37,4 +39,4 @@ const server = http.createServer((request: any, response: any) => {
 });
 
 console.log('START LISTEN');
-server.listen(1222, '127.0.0.1');
+server.listen(config.sender.port, config.sender.host);

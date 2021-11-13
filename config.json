@@ -1,4 +1,17 @@
 {
-  "dbLog": "LOG_DB",
-  "isLoggingEnable": true
+  "log": {
+    "dbName": "LOG_DB",
+    "isEnable": true,
+    "hasConsoleOutput": true,
+    "frequency": 1
+  },
+  "sender": {
+    "host": "127.0.0.1",
+    "port": 1222
+  },
+  "receiver": {
+    "host": "127.0.0.1",
+    "port": 7497,
+    "reconnectInterval": 30
+  }
 }
