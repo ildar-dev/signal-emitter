@@ -53,7 +53,7 @@ export class Logger {
     const date = formatter.format(Date.now());
     const order = this.currentOrder;
     if (this.hasConsoleLog) {
-      console[this.level === ELogLevel.ERROR ? 'error' : 'log'](...[message, meta, date, order].filter(_ => _));
+      console[this.level === ELogLevel.ERROR ? 'error' : 'log'](...[message, meta, date, order?.orderId].filter(_ => _));
     }
 
     if (this.isEnable) {
