@@ -9,7 +9,6 @@ import config from './config.json';
 const ib = new IBApiNext(config.receiver);
 
 const saveCallBack = (messages: TLog[]) => {
-  connect((db) => db.collection(config.log.dbName).insertMany(messages));
 };
 
 const logger = new Logger(ELogLevel.ALL, saveCallBack, config.log.hasConsoleOutput, config.log.frequency, config.log.isEnable);
@@ -55,7 +54,7 @@ export const handler = async (message: TMessage) => {
         takeProfitOrderDb = await openPendingOrder(EOrderType.TAKEPROFIT, message, logger, ib, contract);
       }
 
-      connect(async (db) => {
+      await connect(async (db) => {
         await db.collection(message.channelId).insertMany([openOrderDb, stopLossOrderDb, takeProfitOrderDb].filter(_ => _))
       })
       break;
@@ -90,7 +89,7 @@ export const handler = async (message: TMessage) => {
       }
   
       openOrders
-        .filter(value => pendingOrders?.includes(value))
+        .filter(value => [... pendingOrders, openOrderId].includes(value))
         .forEach(i => { ib.cancelOrder(i); }); // clear old pending orders for this closed order
       break;
     }

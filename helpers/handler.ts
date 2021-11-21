@@ -3,7 +3,7 @@ import { TMessage, EAction, ETypeContract, EOrderType, TDocumentOrder } from '..
 import { connect } from '../mongodb';
 import { Logger } from '../logger';
 
-const TOTAL_QUANTITY = 20000;
+const TOTAL_QUANTITY = 100;
 
 const preOrder: Order = {
   totalQuantity: TOTAL_QUANTITY,
@@ -63,7 +63,7 @@ export const modificatePendingOrder = async (orderType: EOrderType, message: TMe
     const order = (orderType === EOrderType.TAKEPROFIT ? getTakeProfitOrder : getStopLossOrder)(message);
 
     const orderId = await ib.placeNewOrder(contract, order);
-    connect((db) => db.collection(message.channelId).insertOne(getDocument(orderId, orderType, message)));
+    await connect((db) => db.collection(message.channelId).insertOne(getDocument(orderId, orderType, message)));
   } else {
     logger.error(`TRY MODIFY ${orderType} WITHOUT PARENT`);
   }
