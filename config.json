@@ -3,7 +3,8 @@
     "dbName": "LOG_DB",
     "isEnable": true,
     "hasConsoleOutput": true,
-    "frequency": 1
+    "frequency": 1,
+    "timeZone": "Europe/Moscow"
   },
   "sender": {
     "host": "172.17.0.1",
