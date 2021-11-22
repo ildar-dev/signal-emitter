@@ -82,7 +82,10 @@ export const handler = async (message: TMessage) => {
         };
       });
       logger.add('CLOSE', { pendingOrders, openOrders });
-      if (openOrderId && pendingOrders?.every(id => openOrders?.includes(id))) { // true if does not close for limit orders (need close manually)
+      if (
+        openOrderId && // there is openOrderId
+        !openOrders?.some(id => id === openOrderId) && // openOrderId was executed (not in openOrders)
+        pendingOrders?.every(id => openOrders?.includes(id))) { // true if does not close for limit orders (need close manually)
         const order = getCloseOrder(message);
         logger.add('CLOSE BEFORE LIMIT EXECUTION');
         await ib.placeNewOrder(contract, order);
