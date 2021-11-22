@@ -63,7 +63,7 @@ export const modificatePendingOrder = async (orderType: EOrderType, message: TMe
     const order = (orderType === EOrderType.TAKEPROFIT ? getTakeProfitOrder : getStopLossOrder)(message);
 
     const orderId = await ib.placeNewOrder(contract, order);
-    await connect((db) => db.collection(message.channelId).insertOne(getDocument(orderId, orderType, message)));
+    await connect(async (db) => await db.collection(message.channelId).insertOne(getDocument(orderId, orderType, message)));
   } else {
     logger.error(`TRY MODIFY ${orderType} WITHOUT PARENT`);
   }
