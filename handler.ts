@@ -2,16 +2,15 @@ import { IBApiNext, ConnectionState } from '@stoqey/ib';
 import { TMessage, EType, EOrderType, TDocumentOrder } from './types';
 import { getOpenOrder, sleep, getCloseOrder, getContract, getDocument, modificatePendingOrder, openPendingOrder } from './helpers/handler';
 import { mongoClient, db } from './mongodb';
-import { Logger, TLog, ELogLevel } from './logger';
+import { Logger, ELogLevel } from './logger';
 import { lastValueFrom, takeWhile } from 'rxjs';
 import config from './config.json';
 
 const ib = new IBApiNext(config.receiver);
 
-const saveCallBack = (messages: TLog[]) => {
-};
+const logger = new Logger(ELogLevel.ALL, config.log.hasConsoleOutput, config.log.frequency, config.log.isEnable);
 
-const logger = new Logger(ELogLevel.ALL, saveCallBack, config.log.hasConsoleOutput, config.log.frequency, config.log.isEnable);
+let logOrderId = -1;
 
 ib.connect(0);
 
@@ -23,23 +22,23 @@ mongoClient.connect().then(_ => {
  });
 
 ib.error.subscribe((error) => {
-  logger.add('ERROR subscribed,', `${error.error.message}`);
+  logger.add(logOrderId, 'ERROR subscribed,', `${error.error.message}`);
 });
 
 const waitConnection = () => {
   const s = ib.connectionState.pipe(takeWhile(c => c !== ConnectionState.Connected, true));
-  s.subscribe(_ => { logger.add('CHECK CONNECT', _) });
+  s.subscribe(_ => { logger.add(logOrderId, 'CHECK CONNECT', _) });
   return lastValueFrom(s);
 }
 
 export const handler = async (message: TMessage) => {
   const timeStart = performance.now();
-  logger.setMessage(message);
+  logOrderId = message.orderId;
   if (!ib.isConnected) {
-    logger.add('DOES NOT CONNECTED');
+    logger.add(logOrderId, 'DOES NOT CONNECTED');
     await sleep(1000);
     await waitConnection();
-    logger.add('TRY CONNECTED', ib.isConnected);
+    logger.add(logOrderId, 'TRY CONNECTED', ib.isConnected);
   }
   const contract = getContract(message);
   switch (message.type) {
@@ -48,10 +47,8 @@ export const handler = async (message: TMessage) => {
       let stopLossOrderDb: TDocumentOrder | null = null;
       let takeProfitOrderDb: TDocumentOrder | null = null;
       if (message.price) {
-        logger.add('OPEN');
-        const order = getOpenOrder(message);
-        const orderId = await ib.placeNewOrder(contract, order);
-        openOrderDb = getDocument(orderId, EOrderType.OPEN, message);
+        logger.add(logOrderId, 'OPEN');
+        openOrderDb = getDocument((await ib.placeNewOrder(contract, getOpenOrder(message))), EOrderType.OPEN, message);
       }
 
       if (message.stopLoss) {
@@ -74,24 +71,24 @@ export const handler = async (message: TMessage) => {
       break;
     }
     case EType.CLOSE: {
+      const query = { orderIdMessage: message.orderId };
       const openOrders = (await ib.getAllOpenOrders()).map(_ => _.orderId);
-      const query = { $or: [{ orderType: EOrderType.STOPLOSS, orderIdMessage: message.orderId }, { orderType: EOrderType.TAKEPROFIT, orderIdMessage: message.orderId }] };
-      const openOrderId = (await db.collection(message.channelId).findOne({ orderType: EOrderType.OPEN, orderIdMessage: message.orderId }) as TDocumentOrder).orderId;
-      const pendingOrders: number[] = (await (db.collection(message.channelId).find(query)).toArray()).filter(_ => _.orderId && typeof _.orderId === 'number').map(_ => _.orderId);
+      const previousOrders: TDocumentOrder[] = (await (db.collection(message.channelId).find(query)).toArray()).filter(_ => _?.orderId && typeof _?.orderId === 'number') as TDocumentOrder[];
+      const openOrderId = previousOrders.find(_ => _.orderType === EOrderType.OPEN)?.orderId;
+      const previousOrdersId = previousOrders.map(_ => _.orderId);
 
-      logger.add('CLOSE', { pendingOrders, openOrders });
-      if (
-        openOrderId && // there is openOrderId
-        !openOrders?.some(id => id === openOrderId) && // openOrderId was executed (not in openOrders)
-        pendingOrders?.every(id => openOrders?.includes(id))) { // true if does not close for limit orders (need close manually)
-        const order = getCloseOrder(message);
-        logger.add('CLOSE BEFORE LIMIT EXECUTION');
-        await ib.placeNewOrder(contract, order);
+      logger.add(logOrderId, 'CLOSE', previousOrders);
+
+      if (openOrderId && // there is openOrderId
+      !openOrders?.some(id => id === openOrderId) && // openOrderId was executed (not in openOrders)
+      previousOrdersId?.every(id => openOrders?.includes(id))) { // true if does not close for limit orders (need close manually)
+        logger.add(logOrderId, 'CLOSE BEFORE LIMIT EXECUTION');
+        await ib.placeNewOrder(contract, getCloseOrder(message));
       }
   
       openOrders
-        .filter(value => [... pendingOrders, openOrderId].includes(value))
-        .forEach(i => { ib.cancelOrder(i); }); // clear old pending orders for this closed order
+        .filter(id => previousOrdersId.includes(id))
+        .forEach(id => { ib.cancelOrder(id); }); // clear old pending orders for this closed order
       
       await db.collection(message.channelId).deleteMany(query); // instant delete documents
       break;
@@ -100,5 +97,5 @@ export const handler = async (message: TMessage) => {
 
   const timeFinish = performance.now();
   
-  logger.add('HANDLE EXECUTION', timeFinish - timeStart);
+  logger.add(logOrderId, 'HANDLE EXECUTION', timeFinish - timeStart);
 };

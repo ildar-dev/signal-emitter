@@ -35,7 +35,6 @@ export class Logger {
 
   isEnable!: boolean;
 
-  currentOrder?: TMessage = undefined;
 
   constructor(level: ELogLevel, hasConsoleLog = true, frequency: number = 1, isEnable = true) {
     this.level = level;
@@ -44,19 +43,14 @@ export class Logger {
     this.isEnable = isEnable;
   }
 
-  setMessage(order: TMessage) {
-    this.currentOrder = order;
-  }
-
-  add(message: string, meta?: any, level = this.level) {
-    const date = formatter.format(Date.now());
-    const order = this.currentOrder;
-    if (this.hasConsoleLog) {
-      console[this.level === ELogLevel.ERROR ? 'error' : 'log'](...[message, meta, date, order?.orderId].filter(_ => _));
+  add(orderId: number, message: string, meta: any = '', level = this.level) {
+    if (!this.hasConsoleLog) {
+      return;
     }
+    console.log(this.level === ELogLevel.ERROR ? '\x1b[31m' : '\x1b[33m', ...[message, meta, formatter.format(Date.now()), orderId]);
   }
 
-  error(message: string, meta?: any) {
-    this.add(message, ELogLevel.ERROR, meta);
+  error(orderId: number, message: string, meta?: any) {
+    this.add(orderId, message, ELogLevel.ERROR, meta);
   }
 } 

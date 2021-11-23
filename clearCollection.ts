@@ -1,8 +1,8 @@
-import { connect } from './mongodb';
+import { mongoClient, db } from './mongodb';
 
 const collectionsNames = process.argv.slice(2);
 
-connect(async (db) => {
+mongoClient.connect().then(async _ => {
   for(const name of collectionsNames) {
     try {
       await db.collection(name).drop();
@@ -11,4 +11,4 @@ connect(async (db) => {
       console.error('\x1b[31m', name, error);
     }
   }
-})
+}).then(_ => { mongoClient.close() });
