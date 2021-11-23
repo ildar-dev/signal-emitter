@@ -43,7 +43,7 @@ export class Logger {
     this.isEnable = isEnable;
   }
 
-  add(orderId: number, message: string, meta: any = '', level = this.level) {
+  add(orderId: number | '', message: string, meta: any = '', level = this.level) {
     if (!this.hasConsoleLog) {
       return;
     }

@@ -20,12 +20,12 @@ mongoClient.connect().then(_ => {
  });
 
 ib.error.subscribe((error) => {
-  logger.add(-1, 'ERROR subscribed,', `${error.error.message}`);
+  logger.add('', 'TWS', `${error.error.message}`);
 });
 
 const waitConnection = () => {
   const s = ib.connectionState.pipe(takeWhile(c => c !== ConnectionState.Connected, true));
-  s.subscribe(_ => { logger.add(-1, 'CHECK CONNECT', _) });
+  s.subscribe(_ => { logger.add('', 'CHECK CONNECT', _) });
   return lastValueFrom(s);
 }
 
