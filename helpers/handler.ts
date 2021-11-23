@@ -14,11 +14,20 @@ export const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, 
 
 export const getContract = (message: TMessage) => { 
   const split = message.ticker.split('.');
-  return {
+  const isCurrencyPair = split[0] !== 'XAU'; // @todo to channel listener
+
+  return isCurrencyPair 
+  ? {
     secType: SecType.CASH,
     currency: split[1],
     symbol: split[0],
     exchange: 'IDEALPRO',
+  }
+  : {
+    secType: SecType.CMDTY,
+    currency: split[1],
+    symbol: split.join(''),
+    exchange: 'SMART',
   } as Contract;
 };
 
