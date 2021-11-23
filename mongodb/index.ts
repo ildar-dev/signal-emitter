@@ -1,4 +1,4 @@
-import { MongoClient, Db } from 'mongodb';
+import { MongoClient } from 'mongodb';
  
 // создаем объект MongoClient и передаем ему строку подключения
 export const mongoClient = new MongoClient("mongodb://localhost:27017/");

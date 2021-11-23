@@ -1,7 +1,7 @@
 import { Contract, OrderType, Order, OrderAction, IBApiNext, SecType } from '@stoqey/ib';
 import { TMessage, EAction, ETypeContract, EOrderType, TDocumentOrder } from '../types';
 import { Logger } from '../logger';
-import { Db } from 'mongodb';
+import { Collection } from 'mongodb';
 
 const TOTAL_QUANTITY = 20000;
 
@@ -49,8 +49,8 @@ export const getOpenOrder = (message: TMessage): Order => ({
   lmtPrice: message.contractType === ETypeContract.LIMIT ? message.price : undefined,
 })
 
-export const modificatePendingOrder = async (orderType: EOrderType, message: TMessage, logger: Logger, ib: IBApiNext, contract: Contract, db: Db) => {
-  const modificatedOrderId = (await db.collection(message.channelId).findOneAndDelete({ orderType, orderIdMessage: message.orderId })).value?.orderId as number;
+export const modificatePendingOrder = async (orderType: EOrderType, message: TMessage, logger: Logger, ib: IBApiNext, contract: Contract, collection: Collection) => {
+  const modificatedOrderId = (await collection.findOneAndDelete({ orderType, orderIdMessage: message.orderId })).value?.orderId as number;
 
   logger.add(message.orderId, `MODIFICATED ${orderType} ID`, modificatedOrderId);
 
@@ -60,7 +60,7 @@ export const modificatePendingOrder = async (orderType: EOrderType, message: TMe
     const order = (orderType === EOrderType.TAKEPROFIT ? getTakeProfitOrder : getStopLossOrder)(message);
 
     const orderId = await ib.placeNewOrder(contract, order);
-    await db.collection(message.channelId).insertOne(getDocument(orderId, orderType, message));
+    await collection.insertOne(getDocument(orderId, orderType, message));
   } else {
     logger.error(message.orderId, `TRY MODIFY ${orderType} WITHOUT PREVIOUS`);
   }

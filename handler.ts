@@ -10,8 +10,6 @@ const ib = new IBApiNext(config.receiver);
 
 const logger = new Logger(ELogLevel.ALL, config.log.hasConsoleOutput, config.log.frequency, config.log.isEnable);
 
-let logOrderId = -1;
-
 ib.connect(0);
 
 mongoClient.connect().then(_ => {
@@ -22,18 +20,19 @@ mongoClient.connect().then(_ => {
  });
 
 ib.error.subscribe((error) => {
-  logger.add(logOrderId, 'ERROR subscribed,', `${error.error.message}`);
+  logger.add(-1, 'ERROR subscribed,', `${error.error.message}`);
 });
 
 const waitConnection = () => {
   const s = ib.connectionState.pipe(takeWhile(c => c !== ConnectionState.Connected, true));
-  s.subscribe(_ => { logger.add(logOrderId, 'CHECK CONNECT', _) });
+  s.subscribe(_ => { logger.add(-1, 'CHECK CONNECT', _) });
   return lastValueFrom(s);
 }
 
 export const handler = async (message: TMessage) => {
   const timeStart = performance.now();
-  logOrderId = message.orderId;
+  const logOrderId = message.orderId;
+  const collection = db.collection(message.channelId);
   if (!ib.isConnected) {
     logger.add(logOrderId, 'DOES NOT CONNECTED');
     await sleep(1000);
@@ -58,22 +57,22 @@ export const handler = async (message: TMessage) => {
         takeProfitOrderDb = await openPendingOrder(EOrderType.TAKEPROFIT, message, logger, ib, contract);
       }
 
-      await db.collection(message.channelId).insertMany(([openOrderDb, stopLossOrderDb, takeProfitOrderDb] as TDocumentOrder[]).filter(_ => _))
+      await collection.insertMany(([openOrderDb, stopLossOrderDb, takeProfitOrderDb] as TDocumentOrder[]).filter(_ => _))
       break;
     }
     case EType.MODIFICATION: {
       if (message.takeProfit) {
-        await modificatePendingOrder(EOrderType.TAKEPROFIT, message, logger, ib, contract, db);
+        await modificatePendingOrder(EOrderType.TAKEPROFIT, message, logger, ib, contract, collection);
       }
       if (message.stopLoss) {
-        await modificatePendingOrder(EOrderType.STOPLOSS, message, logger, ib, contract, db);
+        await modificatePendingOrder(EOrderType.STOPLOSS, message, logger, ib, contract, collection);
       }
       break;
     }
     case EType.CLOSE: {
       const query = { orderIdMessage: message.orderId };
       const openOrders = (await ib.getAllOpenOrders()).map(_ => _.orderId);
-      const previousOrders: TDocumentOrder[] = (await (db.collection(message.channelId).find(query)).toArray()).filter(_ => _?.orderId && typeof _?.orderId === 'number') as TDocumentOrder[];
+      const previousOrders: TDocumentOrder[] = (await (collection.find(query)).toArray()).filter(_ => _?.orderId && typeof _?.orderId === 'number') as TDocumentOrder[];
       const openOrderId = previousOrders.find(_ => _.orderType === EOrderType.OPEN)?.orderId;
       const previousOrdersId = previousOrders.map(_ => _.orderId);
 
@@ -90,7 +89,7 @@ export const handler = async (message: TMessage) => {
         .filter(id => previousOrdersId.includes(id))
         .forEach(id => { ib.cancelOrder(id); }); // clear old pending orders for this closed order
       
-      await db.collection(message.channelId).deleteMany(query); // instant delete documents
+      await collection.deleteMany(query); // instant delete documents
       break;
     }
   }
