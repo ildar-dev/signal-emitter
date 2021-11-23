@@ -1,4 +1,5 @@
 import { TMessage } from './types';
+import config from './config.json';
 
 export enum ELogLevel {
   ALL = 'ALL',
@@ -20,6 +21,7 @@ const formatter = new Intl.DateTimeFormat('ru', {
   hour: '2-digit',
   minute: '2-digit',
   second: '2-digit',
+  timeZone: config.log.timeZone,
 });
 
 export class Logger {
