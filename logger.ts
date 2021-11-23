@@ -37,13 +37,10 @@ export class Logger {
 
   currentOrder?: TMessage = undefined;
 
-  saveCallBack!: (messages: TLog[]) => any;
-
-  constructor(level: ELogLevel, saveCallBack: (messages: TLog[]) => any, hasConsoleLog = true, frequency: number = 1, isEnable = true) {
+  constructor(level: ELogLevel, hasConsoleLog = true, frequency: number = 1, isEnable = true) {
     this.level = level;
     this.frequency = frequency;
     this.hasConsoleLog = hasConsoleLog;
-    this.saveCallBack = saveCallBack;
     this.isEnable = isEnable;
   }
 
@@ -56,14 +53,6 @@ export class Logger {
     const order = this.currentOrder;
     if (this.hasConsoleLog) {
       console[this.level === ELogLevel.ERROR ? 'error' : 'log'](...[message, meta, date, order?.orderId].filter(_ => _));
-    }
-
-    if (this.isEnable) {
-      this.messages.push({ message, level, meta, date, order });
-      if (this.messages.length >= this.frequency) {
-        this.saveCallBack([...this.messages]);
-        this.messages = [];
-      }
     }
   }
 
