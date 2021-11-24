@@ -13,6 +13,7 @@
   "receiver": {
     "host": "127.0.0.1",
     "port": 4002,
-    "reconnectInterval": 30
+    "reconnectInterval": 30,
+    "connectionWatchdogInterval": 30
   }
 }
