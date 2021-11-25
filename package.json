@@ -9,7 +9,8 @@
     "connect": "ts-node connect.ts",
     "build": "tsc",
     "start-server": "node --experimental-modules dist/index.js",
-    "clear-collections": "ts-node clearCollection.ts"
+    "clear-collections": "ts-node clear-collections.ts",
+    "test": "ts-node tests/data.ts"
   },
   "author": "Ildar Davletyarov",
   "license": "ISC",
