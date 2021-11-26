@@ -6,10 +6,8 @@ import { Logger, ELogLevel } from './logger';
 import { lastValueFrom, takeWhile } from 'rxjs';
 import config from './config.json';
 
-const ib = new IBApiNext(config.receiver);
-
+let ib = new IBApiNext(config.receiver);
 const logger = new Logger(ELogLevel.ALL, config.log.hasConsoleOutput, config.log.frequency, config.log.isEnable);
-
 ib.connect(0);
 
 mongoClient.connect().then(_ => {
@@ -33,11 +31,13 @@ export const handler = async (message: TMessage) => {
   const timeStart = performance.now();
   const logOrderId = message.orderId;
   const collection = db.collection(message.channelId);
-  if (!ib.isConnected) {
-    logger.add(logOrderId, 'DOES NOT CONNECTED');
-    await sleep(1000);
-    await waitConnection();
-    logger.add(logOrderId, 'TRY CONNECTED', ib.isConnected);
+  while (!ib.isConnected) {
+    logger.add(logOrderId, 'CONNECTING...');
+    // await waitConnection();
+    // logger.add(logOrderId, 'TRY CONNECTED', ib.isConnected);
+    ib.disconnect();
+    ib.connect(0);
+    await sleep(10000);
   }
   const contract = getContract(message);
   switch (message.type) {
