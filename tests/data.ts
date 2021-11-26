@@ -11,7 +11,7 @@ const anavaiableMessage: TMessage = {
   orderId: 1,
   messageId: 0,
   action: EAction.BUY,
-  ticker: 'EUR.USD',
+  ticker: 'EUR.RUB',
 };
 
 sleep(3000)
@@ -20,7 +20,7 @@ sleep(3000)
   console.log('HANDLER DONE');
 })
 .then(async () => {
-  await sleep(10000);// disconnect TWS
+  await sleep(30000);// disconnect TWS
   await handler(anavaiableMessage);
   console.log('HANDLER 2 FINISH');
   // connect TWS and wait finish

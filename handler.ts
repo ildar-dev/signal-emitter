@@ -6,11 +6,15 @@ import { Logger, ELogLevel } from './logger';
 import { lastValueFrom, takeWhile } from 'rxjs';
 import config from './config.json';
 
+const CLIENT_ID = 0;
+
+const RECONNECT_TIMEOUT = 1000;
+
 const ib = new IBApiNext(config.receiver);
 
 const logger = new Logger(ELogLevel.ALL, config.log.hasConsoleOutput, config.log.frequency, config.log.isEnable);
 
-ib.connect(0);
+ib.connect(CLIENT_ID);
 
 mongoClient.connect().then(_ => {
   console.log('MONGO CONNECTED');
@@ -23,7 +27,7 @@ ib.error.subscribe((error) => {
   logger.add('', 'TWS', `${error.error.message}`);
 });
 
-const waitConnection = () => {
+const waitConnection = () => { // @deprecated
   const s = ib.connectionState.pipe(takeWhile(c => c !== ConnectionState.Connected, true));
   s.subscribe(_ => { logger.add('', 'CHECK CONNECT', _) });
   return lastValueFrom(s);
@@ -33,11 +37,11 @@ export const handler = async (message: TMessage) => {
   const timeStart = performance.now();
   const logOrderId = message.orderId;
   const collection = db.collection(message.channelId);
-  if (!ib.isConnected) {
-    logger.add(logOrderId, 'DOES NOT CONNECTED');
-    await sleep(1000);
-    await waitConnection();
-    logger.add(logOrderId, 'TRY CONNECTED', ib.isConnected);
+  while (!ib.isConnected) {
+    logger.add(logOrderId, 'CONNECTING...');
+    ib.disconnect();
+    ib.connect(CLIENT_ID);
+    await sleep(RECONNECT_TIMEOUT);
   }
   const contract = getContract(message);
   switch (message.type) {
