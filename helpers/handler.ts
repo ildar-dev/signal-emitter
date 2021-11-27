@@ -3,7 +3,7 @@ import { TMessage, EAction, ETypeContract, EOrderType, TDocumentOrder } from '..
 import { Logger } from '../logger';
 import { Collection } from 'mongodb';
 
-const TOTAL_QUANTITY = 20000;
+const TOTAL_CASH = 1000000; // $
 
 const ORDER_AUTO_EXPIRATION = 1000 * 60 * 60 * 24 * 90; // 90 days
 
@@ -22,8 +22,10 @@ const goodTillDate = () => {
   return new Date(now + ORDER_AUTO_EXPIRATION);
 }
 
-const preOrder = (): Order => ({
-  totalQuantity: TOTAL_QUANTITY,
+const totalQuantity = (message: TMessage) => TOTAL_CASH * (message.percentage / 100) / message.price;
+
+const preOrder = (message: TMessage): Order => ({
+  totalQuantity: totalQuantity(message),
   transmit: true,
   tif: 'GTD',
   goodTillDate: formattedDate(goodTillDate())
@@ -57,21 +59,21 @@ export const getWrappedAction = (action: EAction) => action === EAction.BUY ? Or
 export const getAction = (action: EAction) => action === EAction.BUY ? OrderAction.BUY : OrderAction.SELL;
 
 export const getTakeProfitOrder = (message: TMessage): Order => ({
-  ... preOrder(),
+  ... preOrder(message),
   orderType: OrderType.LMT,
   action: getWrappedAction(message.action),
   lmtPrice: message.takeProfit,
 });
 
 export const getStopLossOrder = (message: TMessage): Order => ({
-  ... preOrder(),
+  ... preOrder(message),
   orderType: OrderType.STP,
   action: getWrappedAction(message.action),
   auxPrice: message.stopLoss,
 });
 
 export const getOpenOrder = (message: TMessage): Order => ({
-  ... preOrder(),
+  ... preOrder(message),
   orderType: getOrderType(message.contractType),
   action: getAction(message.action),
   lmtPrice: message.contractType === ETypeContract.LIMIT ? message.price : undefined,
@@ -103,7 +105,7 @@ export const openPendingOrder = async (orderType: EOrderType.TAKEPROFIT | EOrder
 }
 
 export const getCloseOrder = (message: TMessage): Order => ({
-  ... preOrder(),
+  ... preOrder(message),
   orderType: OrderType.MKT,
   action: getWrappedAction(message.action),
 })
