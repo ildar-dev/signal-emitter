@@ -3,7 +3,7 @@ import { TMessage, EAction, ETypeContract, EOrderType, TDocumentOrder } from '..
 import { Logger } from '../logger';
 import { Collection } from 'mongodb';
 
-const TOTAL_CASH = 1000000; // $
+const TOTAL_CASH = 2000; // $
 
 const ORDER_AUTO_EXPIRATION = 1000 * 60 * 60 * 24 * 90; // 90 days
 
@@ -22,7 +22,7 @@ const goodTillDate = () => {
   return new Date(now + ORDER_AUTO_EXPIRATION);
 }
 
-const totalQuantity = (message: TMessage) => TOTAL_CASH * (message.percentage / 100) / message.price;
+const totalQuantity = (message: TMessage) => Math.round(TOTAL_CASH * (message.percentage / 100) / message.price);
 
 const preOrder = (message: TMessage): Order => ({
   totalQuantity: totalQuantity(message),
