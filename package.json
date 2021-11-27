@@ -10,7 +10,7 @@
     "build": "tsc",
     "start-server": "node --experimental-modules dist/index.js",
     "clear-collections": "ts-node clear-collections.ts",
-    "test": "ts-node tests/data.ts"
+    "test-connection": "ts-node tests/connection-lost.ts"
   },
   "author": "Ildar Davletyarov",
   "license": "ISC",

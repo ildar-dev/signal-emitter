@@ -1,4 +1,4 @@
-import { IBApiNext, ConnectionState } from '@stoqey/ib';
+import { IBApiNext } from '@stoqey/ib';
 import { TMessage, EType, EOrderType, TDocumentOrder } from './types';
 import { getOpenOrder, sleep, getCloseOrder, getContract, getDocument, modificatePendingOrder, openPendingOrder } from './helpers/handler';
 import { mongoClient, db } from './mongodb';
