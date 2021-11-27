@@ -5,14 +5,33 @@ import { Collection } from 'mongodb';
 
 const TOTAL_QUANTITY = 20000;
 
-const preOrder: Order = {
+const ORDER_AUTO_EXPIRATION = 1000 * 60 * 60 * 24 * 90; // 90 days
+
+const formattedDate = (date: Date): string => {
+  const month = ('0' + (date.getMonth() + 1)).slice(-2);
+  const day  = ('0' + (date.getDate())).slice(-2);
+  const year = date.getFullYear();
+  const hour =  ('0' + (date.getHours())).slice(-2);
+  const min =  ('0' + (date.getMinutes())).slice(-2);
+  const sec = ('0' + (date.getSeconds())).slice(-2);
+  return `${year}${month}${day} ${hour}:${min}:${sec}`;
+};
+
+const goodTillDate = () => {
+  const now = new Date().getTime();
+  return new Date(now + ORDER_AUTO_EXPIRATION);
+}
+
+const preOrder = (): Order => ({
   totalQuantity: TOTAL_QUANTITY,
   transmit: true,
-}
+  tif: 'GTD',
+  goodTillDate: formattedDate(goodTillDate())
+});
 
 export const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export const getContract = (message: TMessage) => { 
+export const getContract = (message: TMessage): Contract => { 
   const split = message.ticker.split('.');
   const isCurrencyPair = split[0] !== 'XAU'; // @todo to channel listener
 
@@ -38,36 +57,34 @@ export const getWrappedAction = (action: EAction) => action === EAction.BUY ? Or
 export const getAction = (action: EAction) => action === EAction.BUY ? OrderAction.BUY : OrderAction.SELL;
 
 export const getTakeProfitOrder = (message: TMessage): Order => ({
-  ... preOrder,
+  ... preOrder(),
   orderType: OrderType.LMT,
   action: getWrappedAction(message.action),
   lmtPrice: message.takeProfit,
 });
 
 export const getStopLossOrder = (message: TMessage): Order => ({
-  ... preOrder,
+  ... preOrder(),
   orderType: OrderType.STP,
   action: getWrappedAction(message.action),
   auxPrice: message.stopLoss,
 });
 
 export const getOpenOrder = (message: TMessage): Order => ({
-  ... preOrder,
+  ... preOrder(),
   orderType: getOrderType(message.contractType),
   action: getAction(message.action),
   lmtPrice: message.contractType === ETypeContract.LIMIT ? message.price : undefined,
 })
 
-export const modificatePendingOrder = async (orderType: EOrderType, message: TMessage, logger: Logger, ib: IBApiNext, contract: Contract, collection: Collection) => {
+export const modificatePendingOrder = async (orderType: EOrderType.TAKEPROFIT | EOrderType.STOPLOSS, message: TMessage, logger: Logger, ib: IBApiNext, contract: Contract, collection: Collection) => {
   const modificatedOrderId = (await collection.findOneAndDelete({ orderType, orderIdMessage: message.orderId })).value?.orderId as number;
-
   logger.add(message.orderId, `MODIFICATED ${orderType} ID`, modificatedOrderId);
 
   if (modificatedOrderId) {
     ib.cancelOrder(modificatedOrderId);
     logger.add(message.orderId, 'DELETE', modificatedOrderId);
     const order = (orderType === EOrderType.TAKEPROFIT ? getTakeProfitOrder : getStopLossOrder)(message);
-
     const orderId = await ib.placeNewOrder(contract, order);
     await collection.insertOne(getDocument(orderId, orderType, message));
   } else {
@@ -75,7 +92,7 @@ export const modificatePendingOrder = async (orderType: EOrderType, message: TMe
   }
 }
 
-export const openPendingOrder = async (orderType: EOrderType, message: TMessage, logger: Logger, ib: IBApiNext, contract: Contract): Promise<TDocumentOrder> => {
+export const openPendingOrder = async (orderType: EOrderType.TAKEPROFIT | EOrderType.STOPLOSS, message: TMessage, logger: Logger, ib: IBApiNext, contract: Contract): Promise<TDocumentOrder> => {
   logger.add(message.orderId, `${orderType} OPEN`);
     
   const order = (orderType === EOrderType.TAKEPROFIT ? getTakeProfitOrder : getStopLossOrder)(message);
@@ -86,7 +103,7 @@ export const openPendingOrder = async (orderType: EOrderType, message: TMessage,
 }
 
 export const getCloseOrder = (message: TMessage): Order => ({
-  ... preOrder,
+  ... preOrder(),
   orderType: OrderType.MKT,
   action: getWrappedAction(message.action),
 })
