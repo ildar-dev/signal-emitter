@@ -3,7 +3,6 @@ import { TMessage, EType, EOrderType, TDocumentOrder } from './types';
 import { getOpenOrder, sleep, getCloseOrder, getContract, getDocument, modificatePendingOrder, openPendingOrder } from './helpers/handler';
 import { mongoClient, db } from './mongodb';
 import { Logger, ELogLevel } from './logger';
-import { lastValueFrom, takeWhile } from 'rxjs';
 import config from './config.json';
 
 const CLIENT_ID = 0;
@@ -26,12 +25,6 @@ mongoClient.connect().then(_ => {
 ib.error.subscribe((error) => {
   logger.add('', 'TWS', `${error.error.message}`);
 });
-
-const waitConnection = () => { // @deprecated
-  const s = ib.connectionState.pipe(takeWhile(c => c !== ConnectionState.Connected, true));
-  s.subscribe(_ => { logger.add('', 'CHECK CONNECT', _) });
-  return lastValueFrom(s);
-}
 
 export const handler = async (message: TMessage) => {
   const timeStart = performance.now();
@@ -100,5 +93,5 @@ export const handler = async (message: TMessage) => {
 
   const timeFinish = performance.now();
   
-  logger.add(logOrderId, 'HANDLE EXECUTION', timeFinish - timeStart);
+  logger.add(logOrderId, 'HANDLE EXECUTION', (timeFinish - timeStart).toFixed(2));
 };
