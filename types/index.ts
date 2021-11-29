@@ -36,11 +36,12 @@ export type TMessage = {
   ticker: string,
   type: EType,
   contractType: ETypeContract,
-  price?: number,
+  price: number,
   takeProfit?: number,
   previousTakeProfit?: number,
   stopLoss?: number,
   previousStopLoss?: number,
   action: EAction,
+  percentage: number,
   analitics?: any,
 };
