@@ -68,12 +68,14 @@ export const handler = async (message: TMessage) => {
     }
     case EType.CLOSE: {
       const query = { orderIdMessage: message.orderId };
-      const openOrders = (await ib.getAllOpenOrders()).map(_ => _.orderId);
-      const previousOrders: TDocumentOrder[] = (await (collection.find(query)).toArray()).filter(_ => _?.orderId && typeof _?.orderId === 'number') as TDocumentOrder[];
+      const [openOrders, previousOrders]: [number[], TDocumentOrder[]] = await Promise.all([
+        ib.getAllOpenOrders(),
+        collection.find(query).toArray()
+      ]).then(([openOrders, previousOrders]) => [openOrders.map(_ => _.orderId), previousOrders.filter(_ => _?.orderId && typeof _?.orderId === 'number') as TDocumentOrder[]]);
       const openOrderId = previousOrders.find(_ => _.orderType === EOrderType.OPEN)?.orderId;
       const previousOrdersId = previousOrders.map(_ => _.orderId);
 
-      logger.add(logOrderId, 'CLOSE', previousOrders);
+      logger.add(logOrderId, 'CLOSE', previousOrdersId);
 
       if (openOrderId && // there is openOrderId
       !openOrders?.some(id => id === openOrderId) && // openOrderId was executed (not in openOrders)

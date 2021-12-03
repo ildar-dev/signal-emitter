@@ -4,14 +4,15 @@ import { sleep } from '../helpers/handler';
 import { handler } from '../handler';
 
 const anavaiableMessage: TMessage = {
-  price: 1,
+  price: 3,
   channelId: 'TEST_ANAVAILABLE_PRICE',
   contractType: ETypeContract.LIMIT,
-  type: EType.OPEN,
+  type: EType.CLOSE,
   orderId: 1,
   messageId: 0,
   action: EAction.BUY,
   ticker: 'EUR.USD',
+  percentage: 1,
 };
 
 sleep(3000)
