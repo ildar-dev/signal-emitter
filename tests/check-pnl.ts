@@ -12,7 +12,7 @@ ib.connect(CLIENT_ID);
 
 const args = process.argv.slice(2);
 
-const channelId = args[0] || 'TEST_PNL4';
+const channelId = args[0] || 'R2BC';
 
 const PERIOD_DAYS = +args[1] || 7;
 
