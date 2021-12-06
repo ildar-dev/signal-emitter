@@ -12,7 +12,7 @@ ib.connect(CLIENT_ID);
 
 const args = process.argv.slice(2);
 
-const channelId = args[0] || 'R2BC';
+const channelId = args[0] || 'TEST_PNL4';
 
 const PERIOD_DAYS = +args[1] || 7;
 
@@ -26,12 +26,9 @@ const filter: ExecutionFilter = {
   time: formattedDate(time()),
 };
 
-const formatterExecDetails = (execDetails: ExecutionDetail[]): string => {
-  return execDetails.map(_ => `${_.execution.time}: ${_.contract.localSymbol} – ${_.execution.price}; ${_.execution.orderId}`).join('\n');
-}
-
 const getColor = (isPositive: boolean): string => isPositive ? '\x1b[32m' : '\x1b[31m';
-const zipMongoAndIbData = (execDetails: ExecutionDetail[], documents: TDocumentOrder[]) => {
+
+const infoPnl = (execDetails: ExecutionDetail[], documents: TDocumentOrder[]) => {
   const joinedMongoOrders = documents.reduce<({ orderIdMessage: number, documents: TDocumentOrder[]} | null)[]>((acc, cur) => {
     const pairIndex = acc.findIndex(_ => _?.orderIdMessage === cur.orderIdMessage);
     if (pairIndex !== -1) {
@@ -40,10 +37,9 @@ const zipMongoAndIbData = (execDetails: ExecutionDetail[], documents: TDocumentO
     }
     return [...acc, { orderIdMessage: cur.orderIdMessage, documents: [cur] }]
   }, []);
-  console.log('____ P n L ___');
   let total = 0;
   let channelTotal = 0;
-  joinedMongoOrders.forEach(mongoOrder => {
+  const loggedInfoPnL = joinedMongoOrders.map(mongoOrder => {
     const openOrder = mongoOrder?.documents.find(_ => _.orderType === EOrderType.OPEN);
     if (!openOrder) {
       return null;
@@ -62,20 +58,39 @@ const zipMongoAndIbData = (execDetails: ExecutionDetail[], documents: TDocumentO
       return null;
     }
     const pnl = +(((openIbOrder.execution.price as number) - (closeIbOrder.execution.price as number)) * (openOrder?.message.action === EAction.BUY ? 1 : -1) * (openOrder?.total as number)).toFixed(6);
-    const channelPnl = +(((openIbOrder.execution.price as number) - (closeOrder.message.extra!.expected.price as number)) * (openOrder?.message.action === EAction.BUY ? 1 : -1) * (openOrder?.total as number)).toFixed(6);
+    const channelPnl = closeOrder.message.extra?.expected?.price ? +(((openIbOrder.execution.price as number) - (closeOrder.message.extra?.expected?.price as number)) * (openOrder?.message.action === EAction.BUY ? 1 : -1) * (openOrder?.total as number)).toFixed(6) : 0;
     channelTotal += channelPnl;
     total += pnl;
-    console.log(getColor(pnl > 0), `${openOrder?.orderIdMessage}: ${openOrder?.message.ticker} ${openOrder?.message.action}: ${pnl} | ${channelPnl}`);
-  });
-  console.log(getColor(total > 0), `TOTAL FOR ${PERIOD_DAYS} DAYS: ${total} | ${channelTotal}`);
+    return {
+      positive: pnl >= 0 ? '+' : '-',
+      orderIdMessage: openOrder?.orderIdMessage,
+      ticker: openOrder?.message.ticker,
+      action: openOrder?.message.action,
+      'PnL (real)': pnl,
+      'PnL (channel)': channelPnl,
+    };
+  }).filter(_ => _);
+  return {
+    loggedInfoPnL,
+    total,
+    channelTotal,
+  }
 }
 
 sleep(1000)
 .then(async () => {
+  const openOrders = await ib.getAllOpenOrders();
+  console.log('\x1b[1m', '\nOPEN TWS ORDERS');
+  console.table(openOrders.map(_ => ({ orderId: _.orderId, ticker: _.contract.localSymbol, price: _.order.lmtPrice || _.order.auxPrice })));
   const execDetails = await ib.getExecutionDetails(filter);
-  console.log(formatterExecDetails(execDetails));
+  console.log('\x1b[1m', '\nEXECUTED TWS ORDERS');
+  console.table(execDetails.map(_ => ({ orderId: _.execution.orderId, time: _.execution.time, ticker: _.contract.localSymbol, price: _.execution.price, side: _.execution.side })));
   const allOrders = await (db.collection(channelId).find({})).toArray() as TDocumentOrder[];
-  console.log(allOrders.map(_ => `${_.orderId}, ${_.orderType}, ${_.orderIdMessage}`).join('\n'));
-  zipMongoAndIbData(execDetails, allOrders);
+  console.log('\x1b[1m', '\nMONGODB ORDERS');
+  console.table(allOrders.map(_ => ({ orderId: _.orderId, orderIdMessage: _.orderIdMessage, type: _.orderType })));
+  const infoPnL = infoPnl(execDetails, allOrders);
+  console.log('\x1b[1m', '\nPNL');
+  console.table(infoPnL.loggedInfoPnL);
+  console.log(`${getColor(infoPnL.total >= 0)}\x1b[5m`, `TOTAL PER ${PERIOD_DAYS} DAYS: ${infoPnL.total} | CHANNEL: ${infoPnL.channelTotal}`);
   ib.disconnect();
 });
