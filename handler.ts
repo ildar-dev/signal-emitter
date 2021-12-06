@@ -1,7 +1,7 @@
 import { IBApiNext } from '@stoqey/ib';
 import { TMessage, EType, EOrderType, TDocumentOrder } from './types';
 import { getOpenOrder, sleep, getCloseOrder, getContract, getDocument, modificatePendingOrder, openPendingOrder } from './helpers/handler';
-import { mongoClient, db } from './mongodb';
+import { db } from './mongodb';
 import { Logger, ELogLevel } from './logger';
 import config from './config.json';
 
@@ -14,13 +14,6 @@ const ib = new IBApiNext(config.receiver);
 const logger = new Logger(ELogLevel.ALL, config.log.hasConsoleOutput, config.log.frequency, config.log.isEnable);
 
 ib.connect(CLIENT_ID);
-
-mongoClient.connect().then(_ => {
-  console.log('MONGO CONNECTED');
- })
- .catch(_ => {
-   console.error('MONGO ERR', _);
- });
 
 ib.error.subscribe((error) => {
   logger.add('', 'TWS', `${error.error.message}`);
@@ -44,7 +37,8 @@ export const handler = async (message: TMessage) => {
       let takeProfitOrderDb: TDocumentOrder | null = null;
       if (message.price) {
         logger.add(logOrderId, 'OPEN');
-        openOrderDb = getDocument((await ib.placeNewOrder(contract, getOpenOrder(message))), EOrderType.OPEN, message);
+        const order = getOpenOrder(message);
+        openOrderDb = getDocument((await ib.placeNewOrder(contract, order)), EOrderType.OPEN, message, order.totalQuantity as number);
       }
 
       if (message.stopLoss) {
@@ -72,7 +66,8 @@ export const handler = async (message: TMessage) => {
         ib.getAllOpenOrders(),
         collection.find(query).toArray()
       ]).then(([openOrders, previousOrders]) => [openOrders.map(_ => _.orderId), previousOrders.filter(_ => _?.orderId && typeof _?.orderId === 'number') as TDocumentOrder[]]);
-      const openOrderId = previousOrders.find(_ => _.orderType === EOrderType.OPEN)?.orderId;
+      const openOrder = previousOrders.find(_ => _.orderType === EOrderType.OPEN);
+      const openOrderId = openOrder?.orderId;
       const previousOrdersId = previousOrders.map(_ => _.orderId);
 
       logger.add(logOrderId, 'CLOSE', previousOrdersId);
@@ -81,14 +76,13 @@ export const handler = async (message: TMessage) => {
       !openOrders?.some(id => id === openOrderId) && // openOrderId was executed (not in openOrders)
       previousOrdersId?.every(id => openOrders?.includes(id))) { // true if does not close for limit orders (need close manually)
         logger.add(logOrderId, 'CLOSE BEFORE LIMIT EXECUTION');
-        await ib.placeNewOrder(contract, getCloseOrder(message));
+        const orderId = await ib.placeNewOrder(contract, getCloseOrder(message));
+        await db.collection(message.channelId).insertOne(getDocument(orderId, EOrderType.CLOSE, message, openOrder?.total as number));
       }
   
       openOrders
         .filter(id => previousOrdersId.includes(id))
         .forEach(id => { ib.cancelOrder(id); }); // clear old pending orders for this closed order
-      
-      await collection.deleteMany(query); // instant delete documents
       break;
     }
   }

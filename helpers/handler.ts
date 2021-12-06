@@ -7,7 +7,7 @@ const TOTAL_CASH = 2000; // $
 
 const ORDER_AUTO_EXPIRATION = 1000 * 60 * 60 * 24 * 90; // 90 days
 
-const formattedDate = (date: Date): string => {
+export const formattedDate = (date: Date): string => {
   const month = ('0' + (date.getMonth() + 1)).slice(-2);
   const day  = ('0' + (date.getDate())).slice(-2);
   const year = date.getFullYear();
@@ -88,7 +88,7 @@ export const modificatePendingOrder = async (orderType: EOrderType.TAKEPROFIT | 
     logger.add(message.orderId, 'DELETE', modificatedOrderId);
     const order = (orderType === EOrderType.TAKEPROFIT ? getTakeProfitOrder : getStopLossOrder)(message);
     const orderId = await ib.placeNewOrder(contract, order);
-    await collection.insertOne(getDocument(orderId, orderType, message));
+    await collection.insertOne(getDocument(orderId, orderType, message, order.totalQuantity as number));
   } else {
     logger.error(message.orderId, `TRY MODIFY ${orderType} WITHOUT PREVIOUS`);
   }
@@ -101,7 +101,7 @@ export const openPendingOrder = async (orderType: EOrderType.TAKEPROFIT | EOrder
 
   const orderId = await ib.placeNewOrder(contract, order);
 
-  return getDocument(orderId, orderType, message);
+  return getDocument(orderId, orderType, message, order.totalQuantity as number);
 }
 
 export const getCloseOrder = (message: TMessage): Order => ({
@@ -110,10 +110,11 @@ export const getCloseOrder = (message: TMessage): Order => ({
   action: getWrappedAction(message.action),
 })
 
-export const getDocument = (orderId: number, orderType: EOrderType, message: TMessage): TDocumentOrder => ({
+export const getDocument = (orderId: number, orderType: EOrderType, message: TMessage, total: number): TDocumentOrder => ({
   orderId,
   orderType,
   orderIdMessage: message.orderId,
   date: Date.now(),
+  total,
   message,
 });

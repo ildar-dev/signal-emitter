@@ -4,6 +4,7 @@ export type TDocumentOrder = {
   orderIdMessage: number,
   date: number,
   message: TMessage,
+  total: number,
 }
 
 export enum EType {
