@@ -45,4 +45,10 @@ export type TMessage = {
   action: EAction,
   percentage: number,
   analitics?: any,
+  extra?: {
+    expected: {
+      income: number,
+      price: number
+    }
+  }
 };

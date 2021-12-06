@@ -42,6 +42,7 @@ const zipMongoAndIbData = (execDetails: ExecutionDetail[], documents: TDocumentO
   }, []);
   console.log('____ P n L ___');
   let total = 0;
+  let channelTotal = 0;
   joinedMongoOrders.forEach(mongoOrder => {
     const openOrder = mongoOrder?.documents.find(_ => _.orderType === EOrderType.OPEN);
     if (!openOrder) {
@@ -60,11 +61,13 @@ const zipMongoAndIbData = (execDetails: ExecutionDetail[], documents: TDocumentO
     if (!openIbOrder || !closeIbOrder) {
       return null;
     }
-    const pnl = +(((openIbOrder.execution.price as number) - (closeIbOrder.execution.price as number)) * (openOrder?.message.action === EAction.BUY ? 1 : -1) * (openOrder?.total as number)).toFixed(4);
+    const pnl = +(((openIbOrder.execution.price as number) - (closeIbOrder.execution.price as number)) * (openOrder?.message.action === EAction.BUY ? 1 : -1) * (openOrder?.total as number)).toFixed(6);
+    const channelPnl = +(((openIbOrder.execution.price as number) - (closeOrder.message.extra!.expected.price as number)) * (openOrder?.message.action === EAction.BUY ? 1 : -1) * (openOrder?.total as number)).toFixed(6);
+    channelTotal += channelPnl;
     total += pnl;
-    console.log(getColor(pnl > 0), `${openOrder?.orderIdMessage}: ${openOrder?.message.ticker} ${openOrder?.message.action}: ${pnl}`);
+    console.log(getColor(pnl > 0), `${openOrder?.orderIdMessage}: ${openOrder?.message.ticker} ${openOrder?.message.action}: ${pnl} | ${channelPnl}`);
   });
-  console.log(getColor(total > 0), `TOTAL FOR ${PERIOD_DAYS} DAYS: ${total} $`);
+  console.log(getColor(total > 0), `TOTAL FOR ${PERIOD_DAYS} DAYS: ${total} | ${channelTotal}`);
 }
 
 sleep(1000)
