@@ -68,20 +68,20 @@ export const handler = async (message: TMessage) => {
       ]).then(([openOrders, previousOrders]) => [openOrders.map(_ => _.orderId), previousOrders.filter(_ => _?.orderId && typeof _?.orderId === 'number') as TDocumentOrder[]]);
       const openOrder = previousOrders.find(_ => _.orderType === EOrderType.OPEN);
       const openOrderId = openOrder?.orderId;
-      const previousOrdersId = previousOrders.map(_ => _.orderId);
+      const pendingOrdersId = previousOrders.map(_ => _.orderId).filter(_ => _ !== openOrderId);
 
-      logger.add(logOrderId, 'CLOSE', previousOrdersId);
+      logger.add(logOrderId, 'CLOSE', { previousOrders, openOrders });
 
       if (openOrderId && // there is openOrderId
       !openOrders?.some(id => id === openOrderId) && // openOrderId was executed (not in openOrders)
-      previousOrdersId?.every(id => openOrders?.includes(id))) { // true if does not close for limit orders (need close manually)
+      pendingOrdersId?.every(id => openOrders?.includes(id))) { // true if does not close for pending orders (need close manually)
         logger.add(logOrderId, 'CLOSE BEFORE LIMIT EXECUTION');
         const orderId = await ib.placeNewOrder(contract, getCloseOrder(message));
         await db.collection(message.channelId).insertOne(getDocument(orderId, EOrderType.CLOSE, message, openOrder?.total as number));
       }
   
       openOrders
-        .filter(id => previousOrdersId.includes(id))
+        .filter(id => pendingOrdersId.includes(id))
         .forEach(id => { ib.cancelOrder(id); }); // clear old pending orders for this closed order
       break;
     }
