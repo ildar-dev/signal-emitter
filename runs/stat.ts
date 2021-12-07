@@ -5,6 +5,8 @@ import { db } from '../mongodb';
 import { EAction, EOrderType, TDocumentOrder } from '../types';
 import { lastValueFrom, timeout, takeWhile, map } from 'rxjs';
 
+const args = process.argv.slice(2);
+
 const ib = new IBApiNext(config.receiver);
 
 const CLIENT_ID = 1;
@@ -12,8 +14,6 @@ const CLIENT_ID = 1;
 ib.connect(CLIENT_ID);
 
 const tags = ['TotalCashValue'];
-
-const args = process.argv.slice(2);
 
 const channelId = args[0] || 'TEST_PNL4';
 
