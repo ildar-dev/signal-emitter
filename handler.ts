@@ -38,6 +38,7 @@ export const handler = async (message: TMessage) => {
       if (message.price) {
         logger.add(logOrderId, 'OPEN');
         const order = getOpenOrder(message);
+        console.log(order, contract);
         openOrderDb = getDocument((await ib.placeNewOrder(contract, order)), EOrderType.OPEN, message, order.totalQuantity as number);
       }
 

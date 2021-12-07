@@ -4,24 +4,23 @@ import { sleep } from '../helpers/handler';
 import { handler } from '../handler';
 
 const messageBuy: TMessage = {
-  price: 1,
+  price: 100,
   channelId: 'TEST_PNL4',
-  contractType: ETypeContract.MARKET,
+  contractType: ETypeContract.LIMIT,
   type: EType.OPEN,
-  orderId: 150,
+  orderId: 170,
   messageId: 0,
   action: EAction.BUY,
-  ticker: 'EUR.USD',
-  percentage: 1,
-  takeProfit: 0.5,
+  ticker: 'EUR.JPY',
+  percentage: 0.1,
 };
 
 const messageClose: TMessage = {
-  price: 1,
+  price: 1.3,
   channelId: 'TEST_PNL4',
-  contractType: ETypeContract.MARKET,
+  contractType: ETypeContract.LIMIT,
   type: EType.CLOSE,
-  orderId: 150,
+  orderId: 170,
   messageId: 0,
   action: EAction.BUY,
   ticker: 'EUR.USD',

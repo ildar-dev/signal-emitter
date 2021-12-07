@@ -5,7 +5,7 @@ import { Collection } from 'mongodb';
 
 export const CURRENCY = 'USD';
 
-const TOTAL_CASH = 2000; // $
+const TOTAL_CASH = 20000; // $
 
 const ORDER_AUTO_EXPIRATION = 1000 * 60 * 60 * 24 * 90; // 90 days
 
@@ -24,10 +24,10 @@ const goodTillDate = () => {
   return new Date(now + ORDER_AUTO_EXPIRATION);
 }
 
-const totalQuantity = (message: TMessage) => Math.round(TOTAL_CASH * (message.percentage / 100) / message.price);
+const totalQuantity = (message: TMessage) => Math.ceil(TOTAL_CASH * (message.percentage / 100));
 
 const preOrder = (message: TMessage): Order => ({
-  totalQuantity: totalQuantity(message),
+  cashQty: totalQuantity(message),
   transmit: true,
   tif: 'GTD',
   goodTillDate: formattedDate(goodTillDate())
