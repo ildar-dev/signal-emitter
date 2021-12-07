@@ -9,9 +9,9 @@
     "connect": "ts-node connect.ts",
     "build": "tsc",
     "start-server": "node --experimental-modules dist/index.js",
-    "clear-collections": "ts-node clear-collections.ts",
-    "test-connection": "ts-node tests/connection-lost.ts",
-    "check-pnl": "ts-node tests/check-pnl.ts"
+    "clear-collections": "ts-node runs/clear-collections.ts",
+    "test-connection": "ts-node runs/connection-lost.ts",
+    "stat": "ts-node runs/stat.ts"
   },
   "author": "Ildar Davletyarov",
   "license": "ISC",

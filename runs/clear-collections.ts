@@ -1,4 +1,4 @@
-import { mongoClient, db } from './mongodb';
+import { mongoClient, db } from '../mongodb';
 
 const collectionsNames = process.argv.slice(2);
 
