@@ -15,7 +15,7 @@ ib.connect(CLIENT_ID);
 
 const tags = ['TotalCashValue'];
 
-const channelId = args[0] || 'TEST_PNL4';
+const channelId = args[0] || 'R2BC';
 
 const PERIOD_DAYS = +args[1] || 7;
 
