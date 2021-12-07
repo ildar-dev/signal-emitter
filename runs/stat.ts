@@ -15,7 +15,7 @@ ib.connect(CLIENT_ID);
 
 const tags = ['TotalCashValue'];
 
-const channelId = args[0] || 'R2BC';
+const channelId = args[0] || 'TEST_PNL4';
 
 const PERIOD_DAYS = +args[1] || 7;
 
@@ -55,13 +55,17 @@ const infoPnl = (execDetails: ExecutionDetail[], documents: TDocumentOrder[]) =>
       return null;
     }
     const closeOrder = closeOrders[0];
-    const openIbOrder = execDetails.find(_ => _.execution.orderId === openOrder?.orderId) as ExecutionDetail;
-    const closeIbOrder = execDetails.find(_ => _.execution.orderId === closeOrder?.orderId) as ExecutionDetail;
-    if (!openIbOrder || !closeIbOrder) {
+    const closeChannelPrice = closeOrder?.message.price;
+    const openChannelPrice = openOrder.message.price;
+    const openIbPrice = execDetails.find(_ => _.execution.orderId === openOrder?.orderId)?.execution?.price;
+    const closeIbOrder = execDetails.find(_ => _.execution.orderId === closeOrder?.orderId);
+    const closeIbPrice = closeIbOrder?.execution?.price || closeIbOrder?.execution?.avgPrice;
+    if (!openIbPrice || !closeIbPrice) {
       return null;
     }
-    const pnl = +(((openIbOrder.execution.price as number) - (closeIbOrder.execution.price as number)) * (openOrder?.message.action === EAction.BUY ? 1 : -1) * (openOrder?.total as number)).toFixed(6);
-    const channelPnl = closeOrder.message.extra?.expected?.price ? +(((openIbOrder.execution.price as number) - (closeOrder.message.extra?.expected?.price as number)) * (openOrder?.message.action === EAction.BUY ? 1 : -1) * (openOrder?.total as number)).toFixed(6) : 0;
+    const side = openOrder?.message.action === EAction.BUY ? -1 : 1;
+    const pnl = +((openIbPrice - closeIbPrice) * side * openOrder!.total).toFixed(6);
+    const channelPnl = +((openChannelPrice - closeChannelPrice) * side * openOrder!.total).toFixed(6);
     channelTotal += channelPnl;
     total += pnl;
     return {
@@ -69,8 +73,9 @@ const infoPnl = (execDetails: ExecutionDetail[], documents: TDocumentOrder[]) =>
       orderIdMessage: openOrder?.orderIdMessage,
       ticker: openOrder?.message.ticker,
       action: openOrder?.message.action,
-      'PnL (real)': pnl,
-      'PnL (channel)': channelPnl,
+      'PnL (real)': `${pnl} = ${openIbPrice.toFixed(4)} - ${closeIbPrice?.toFixed(4)}`,
+      'PnL (channel)': `${channelPnl} = ${openChannelPrice} - ${closeChannelPrice}`,
+      'Total': openOrder?.total || null,
     };
   }).filter(_ => _);
   return {
