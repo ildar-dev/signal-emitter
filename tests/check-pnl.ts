@@ -1,14 +1,17 @@
 import { ExecutionDetail, ExecutionFilter, IBApiNext } from '@stoqey/ib';
 import config from '../config.json';
-import { sleep, formattedDate } from '../helpers/handler';
+import { sleep, formattedDate, CURRENCY } from '../helpers/handler';
 import { db } from '../mongodb';
 import { EAction, EOrderType, TDocumentOrder } from '../types';
+import { lastValueFrom, timeout, takeWhile, map } from 'rxjs';
 
 const ib = new IBApiNext(config.receiver);
 
 const CLIENT_ID = 1;
 
 ib.connect(CLIENT_ID);
+
+const tags = ['TotalCashValue'];
 
 const args = process.argv.slice(2);
 
@@ -77,20 +80,32 @@ const infoPnl = (execDetails: ExecutionDetail[], documents: TDocumentOrder[]) =>
   }
 }
 
-sleep(1000)
+sleep(800)
 .then(async () => {
   const openOrders = await ib.getAllOpenOrders();
   console.log('\x1b[1m', '\nOPEN TWS ORDERS');
   console.table(openOrders.map(_ => ({ orderId: _.orderId, ticker: _.contract.localSymbol, price: _.order.lmtPrice || _.order.auxPrice })));
+
   const execDetails = await ib.getExecutionDetails(filter);
   console.log('\x1b[1m', '\nEXECUTED TWS ORDERS');
   console.table(execDetails.map(_ => ({ orderId: _.execution.orderId, time: _.execution.time, ticker: _.contract.localSymbol, price: _.execution.price, side: _.execution.side })));
+  
   const allOrders = await (db.collection(channelId).find({})).toArray() as TDocumentOrder[];
   console.log('\x1b[1m', '\nMONGODB ORDERS');
   console.table(allOrders.map(_ => ({ orderId: _.orderId, orderIdMessage: _.orderIdMessage, type: _.orderType })));
+
   const infoPnL = infoPnl(execDetails, allOrders);
   console.log('\x1b[1m', '\nPNL');
   console.table(infoPnL.loggedInfoPnL);
   console.log(`${getColor(infoPnL.total >= 0)}\x1b[5m`, `TOTAL PER ${PERIOD_DAYS} DAYS: ${infoPnL.total} | CHANNEL: ${infoPnL.channelTotal}`);
+
+  console.log('\x1b[1m', '\nACCOUNT INFO');
+  const t = (await lastValueFrom(ib.getAccountSummary('All', tags.join(','))
+    .pipe(
+      timeout(2000),
+      map((_) => Array.from(Array.from(_.all, ([_name, value]) => value)[0], ([name, value]) => ({ name, value: value.get(CURRENCY)?.value }))),
+      takeWhile((_) => (_.length < tags.length), true),
+    )));
+  console.table(t);
   ib.disconnect();
 });

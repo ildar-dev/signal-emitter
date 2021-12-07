@@ -3,6 +3,8 @@ import { TMessage, EAction, ETypeContract, EOrderType, TDocumentOrder } from '..
 import { Logger } from '../logger';
 import { Collection } from 'mongodb';
 
+export const CURRENCY = 'USD';
+
 const TOTAL_CASH = 2000; // $
 
 const ORDER_AUTO_EXPIRATION = 1000 * 60 * 60 * 24 * 90; // 90 days
