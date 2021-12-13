@@ -19,6 +19,12 @@ ib.error.subscribe((error) => {
   logger.add('', 'TWS', `${error.error.message}`);
 });
 
+sleep(1000)
+.then(async _ => {
+  await db.collection('R2BC_ONLY_OPEN_PENDING').find({}).toArray();
+  console.log('ADD COLLECTION');
+})
+
 export const handler = async (message: TMessage) => {
   const timeStart = performance.now();
   const logOrderId = message.orderId;
