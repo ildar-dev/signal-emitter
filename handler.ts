@@ -51,15 +51,15 @@ export const handler = async (message: TMessage) => {
       await collection.insertMany(([openOrderDb, stopLossOrderDb, takeProfitOrderDb] as TDocumentOrder[]).filter(_ => _))
       break;
     }
-    case EType.MODIFICATION: {
-      if (message.takeProfit) {
-        await modificatePendingOrder(EOrderType.TAKEPROFIT, message, logger, ib, contract, collection);
-      }
-      if (message.stopLoss) {
-        await modificatePendingOrder(EOrderType.STOPLOSS, message, logger, ib, contract, collection);
-      }
-      break;
-    }
+    // case EType.MODIFICATION: {
+    //   if (message.takeProfit) {
+    //     await modificatePendingOrder(EOrderType.TAKEPROFIT, message, logger, ib, contract, collection);
+    //   }
+    //   if (message.stopLoss) {
+    //     await modificatePendingOrder(EOrderType.STOPLOSS, message, logger, ib, contract, collection);
+    //   }
+    //   break;
+    // }
     case EType.CLOSE: {
       const query = { orderIdMessage: message.orderId };
       const [openOrders, previousOrders]: [number[], TDocumentOrder[]] = await Promise.all([
@@ -73,11 +73,15 @@ export const handler = async (message: TMessage) => {
       logger.add(logOrderId, 'CLOSE', { previousOrders, openOrders });
 
       if (openOrderId && // there is openOrderId
-      !openOrders?.some(id => id === openOrderId) && // openOrderId was executed (not in openOrders)
-      pendingOrdersId?.every(id => openOrders?.includes(id))) { // true if does not close for pending orders (need close manually)
-        logger.add(logOrderId, 'CLOSE BEFORE LIMIT EXECUTION');
+      !openOrders?.some(id => id === openOrderId) // openOrderId was executed (not in openOrders)
+      // pendingOrdersId?.every(id => openOrders?.includes(id))
+      ) 
+      { // true if does not close for pending orders (need close manually)
+        // logger.add(logOrderId, 'CLOSE BEFORE LIMIT EXECUTION');
         const orderId = await ib.placeNewOrder(contract, getCloseOrder(message));
         await db.collection(message.channelId).insertOne(getDocument(orderId, EOrderType.CLOSE, message, openOrder?.total as number));
+      } else {
+        logger.error(logOrderId, 'TRY CLOSE BEFORE OPEN');
       }
   
       openOrders
