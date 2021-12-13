@@ -70,14 +70,18 @@ export const handler = async (message: TMessage) => {
       const openOrderId = openOrder?.orderId;
       const pendingOrdersId = previousOrders.map(_ => _.orderId).filter(_ => _ !== openOrderId);
 
-      logger.add(logOrderId, 'CLOSE', { previousOrders, openOrders });
-
       if (openOrderId && // there is openOrderId
-      !openOrders?.some(id => id === openOrderId) && // openOrderId was executed (not in openOrders)
-      pendingOrdersId?.every(id => openOrders?.includes(id))) { // true if does not close for pending orders (need close manually)
-        logger.add(logOrderId, 'CLOSE BEFORE LIMIT EXECUTION');
-        const orderId = await ib.placeNewOrder(contract, getCloseOrder(message));
-        await db.collection(message.channelId).insertOne(getDocument(orderId, EOrderType.CLOSE, message, openOrder?.total as number));
+      !openOrders?.some(id => id === openOrderId)) // openOrderId was executed (not in openOrders)
+      {
+        if (!previousOrders.filter(_ => _.orderType !== EOrderType.OPEN).length) { // there are't pending orders
+          const orderId = await ib.placeNewOrder(contract, getCloseOrder(message));
+          await db.collection(message.channelId).insertOne(getDocument(orderId, EOrderType.CLOSE, message, openOrder?.total as number));
+          logger.add(logOrderId, 'CLOSE WITHOUT PENDING');
+        } else {
+          await db.collection(message.channelId).insertOne(getDocument(-1, EOrderType.CLOSE_ONLY_STAT, message, openOrder?.total as number));
+        }
+      } else {
+        logger.add(logOrderId, 'TRY CLOSE BEFORE OPEN');
       }
   
       openOrders

@@ -18,6 +18,7 @@ export enum EOrderType {
   CLOSE = 'CLOSE',
   TAKEPROFIT = 'TAKEPROFIT',
   STOPLOSS = 'STOPLOSS',
+  CLOSE_ONLY_STAT = 'CLOSE_ONLY_STAT',
 }
 
 export enum ETypeContract {
