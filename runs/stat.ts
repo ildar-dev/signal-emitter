@@ -55,7 +55,7 @@ const infoPnl = (execDetails: ExecutionDetail[], documents: TDocumentOrder[]) =>
       return null;
     }
     const closeOrder = closeOrders[0];
-    const closeChannelPrice = closeOrder?.message.price;
+    const closeChannelPrice = closeOrder.message.takeProfit || closeOrder.message.stopLoss || closeOrder.message.price;
     const openChannelPrice = openOrder.message.price;
     const openIbPrice = execDetails.find(_ => _.execution.orderId === openOrder?.orderId)?.execution?.price;
     const closeIbOrder = execDetails.find(_ => _.execution.orderId === closeOrder?.orderId);
