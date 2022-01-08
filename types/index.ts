@@ -52,3 +52,5 @@ export type TMessage = {
     }
   }
 };
+
+export type THandler = (message: TMessage) => Promise<void>

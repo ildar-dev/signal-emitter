@@ -1,6 +1,6 @@
 import { Contract, OrderType, Order, OrderAction, IBApiNext, SecType } from '@stoqey/ib';
-import { TMessage, EAction, ETypeContract, EOrderType, TDocumentOrder } from '../types';
-import { Logger } from '../logger';
+import { TMessage, EAction, ETypeContract, EOrderType, TDocumentOrder } from '../../types';
+import { Logger } from '../../logger';
 import { Collection } from 'mongodb';
 
 export const CURRENCY = 'USD';

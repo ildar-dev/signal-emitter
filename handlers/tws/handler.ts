@@ -1,9 +1,9 @@
 import { IBApiNext } from '@stoqey/ib';
-import { TMessage, EType, EOrderType, TDocumentOrder } from './types';
-import { getOpenOrder, sleep, getCloseOrder, getContract, getDocument, modificatePendingOrder, openPendingOrder } from './helpers/handler';
-import { db } from './mongodb';
-import { Logger, ELogLevel } from './logger';
-import config from './config.json';
+import { TMessage, EType, EOrderType, TDocumentOrder, THandler } from '../../types';
+import { getOpenOrder, sleep, getCloseOrder, getContract, getDocument, modificatePendingOrder, openPendingOrder } from './helpers';
+import { db } from '../../mongodb';
+import { Logger, ELogLevel } from '../../logger';
+import config from '../../config.json';
 
 const CLIENT_ID = 0;
 
@@ -19,7 +19,7 @@ ib.error.subscribe((error) => {
   logger.add('', 'TWS', `${error.error.message}`);
 });
 
-export const handler = async (message: TMessage) => {
+export const handler: THandler = async (message: TMessage) => {
   const timeStart = performance.now();
   const logOrderId = message.orderId;
   const collection = db.collection(message.channelId);
