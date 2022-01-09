@@ -1,5 +1,5 @@
 import http from 'http';
-import { handler } from './brokers/tws/handler';
+import { handler } from './brokers/index';
 import { TMessage } from './types';
 
 import config from './config.json';

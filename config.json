@@ -15,5 +15,6 @@
     "port": 4002,
     "reconnectInterval": 3000,
     "connectionWatchdogInterval": 10
-  }
+  },
+  "broker": "MT5"
 }
