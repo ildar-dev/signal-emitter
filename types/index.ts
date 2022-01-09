@@ -26,7 +26,7 @@ export enum ETypeContract {
 }
 
 export enum EAction {
-  BUY = 'BUY',
+  BUY = 'buy',
   SELL = 'sell',
 }
 
@@ -53,4 +53,11 @@ export type TMessage = {
   }
 };
 
-export type THandler = (message: TMessage) => Promise<void>
+export type THandler = (message: TMessage) => Promise<void>;
+
+export type TStarter = () => Promise<void>;
+
+export type TBroker = {
+  handler: THandler,
+  starter: TStarter,
+}

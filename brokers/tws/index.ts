@@ -1,5 +1,5 @@
 import { IBApiNext } from '@stoqey/ib';
-import { TMessage, EType, EOrderType, TDocumentOrder, THandler } from '../../types';
+import { TMessage, EType, EOrderType, TDocumentOrder, THandler, TStarter, TBroker } from '../../types';
 import { getOpenOrder, sleep, getCloseOrder, getContract, getDocument, modificatePendingOrder, openPendingOrder } from './helpers';
 import { db } from '../../mongodb';
 import { Logger, ELogLevel } from '../../logger';
@@ -13,7 +13,7 @@ const logger = new Logger(ELogLevel.ALL, config.log.hasConsoleOutput, config.log
 
 let ib: IBApiNext;
 
-export const start = async () => {
+export const starter: TStarter = async () => {
   ib = new IBApiNext(config.receiver);
 
   ib.connect(CLIENT_ID);
@@ -97,6 +97,6 @@ export const handler: THandler = async (message: TMessage) => {
 };
 
 export default {
-  start,
+  starter,
   handler,
-};
+} as TBroker;

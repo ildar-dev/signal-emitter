@@ -1,4 +1,4 @@
-import { THandler, TMessage, EType, EAction } from '../../types';
+import { THandler, TBroker, TStarter, TMessage, EType, EAction } from '../../types';
 import { db } from '../../mongodb';
 import { Logger, ELogLevel } from '../../logger';
 import config from '../../config.json';
@@ -21,7 +21,7 @@ const api = new MetaApi(token);
 let account: MetatraderAccount;
 let connection: StreamingMetaApiConnection;
 
-const start = async () => {
+const starter: TStarter = async () => {
   account = await api.metatraderAccountApi.getAccounts({}).then(_ => _.find(a => a.login === login && a.type.startsWith('cloud'))) as MetatraderAccount;
   console.log('Deploying account');
   await account.deploy();
@@ -62,6 +62,9 @@ const handler: THandler = async (message: TMessage) => {
     }
     case EType.MODIFICATION: {
       const document = await collection.findOne({ orderMessageId: message.orderId }) as any;
+      if (!document?.order?.positionId) {
+        logger.error(logOrderId, 'TRY MODIFICATE WITHOUT OPEN');
+      }
       const order = await connection.modifyPosition(document.order.positionId, message.stopLoss, message.takeProfit); // modificate
 
       logger.add(logOrderId, 'MODIFICATE', { document, order });
@@ -70,6 +73,9 @@ const handler: THandler = async (message: TMessage) => {
     }
     case EType.CLOSE: {
       const document = await collection.findOne({ orderMessageId: message.orderId }) as any;
+      if (!document?.order?.positionId) {
+        logger.error(logOrderId, 'TRY CLOSE WITHOUT OPEN');
+      }
       const order = connection.closePosition(document.order.positionId, {});
       logger.add(logOrderId, 'MODIFICATE', { document, order });
       break;
@@ -82,6 +88,6 @@ const handler: THandler = async (message: TMessage) => {
 };
 
 export default {
-  start,
+  starter,
   handler,
-};
+} as TBroker;
