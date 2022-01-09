@@ -1,6 +1,6 @@
 import { ExecutionDetail, ExecutionFilter, IBApiNext } from '@stoqey/ib';
 import config from '../config.json';
-import { sleep, formattedDate, CURRENCY } from '../helpers/handler';
+import { sleep, formattedDate, CURRENCY } from '../handlers/tws/helpers';
 import { db } from '../mongodb';
 import { EAction, EOrderType, TDocumentOrder } from '../types';
 import { lastValueFrom, timeout, takeWhile, map } from 'rxjs';
@@ -105,12 +105,12 @@ sleep(800)
   console.log(`${getColor(infoPnL.total >= 0)}\x1b[5m`, `TOTAL PER ${PERIOD_DAYS} DAYS: ${infoPnL.total} | CHANNEL: ${infoPnL.channelTotal}`);
 
   console.log('\x1b[1m', '\nACCOUNT INFO');
-  const t = (await lastValueFrom(ib.getAccountSummary('All', tags.join(','))
+  console.table(await lastValueFrom(ib.getAccountSummary('All', tags.join(','))
     .pipe(
       timeout(2000),
       map((_) => Array.from(Array.from(_.all, ([_name, value]) => value)[0], ([name, value]) => ({ name, value: value.get(CURRENCY)?.value }))),
       takeWhile((_) => (_.length < tags.length), true),
     )));
-  console.table(t);
   ib.disconnect();
+  process.exit(1)
 });

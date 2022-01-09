@@ -1,7 +1,7 @@
 import { TMessage, ETypeContract, EType, EAction } from '../types';
 
-import { sleep } from '../helpers/handler';
-import { handler } from '../handler';
+import { sleep } from '../handlers/tws/helpers';
+import { handler } from '../handlers/tws/handler';
 
 const messageBuy: TMessage = {
   price: 1,

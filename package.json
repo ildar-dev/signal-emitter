@@ -11,7 +11,8 @@
     "clear-collections": "ts-node runs/clear-collections.ts",
     "test-connection": "ts-node runs/connection-lost.ts",
     "stat": "ts-node runs/stat.ts",
-    "mt5": "ts-node handlers/mt5/handler.ts"
+    "mt5": "ts-node handlers/mt5/handler.ts",
+    "mt5:test": "ts-node handlers/mt5/test.ts"
   },
   "author": "Ildar Davletyarov",
   "license": "ISC",
