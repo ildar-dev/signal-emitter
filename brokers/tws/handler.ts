@@ -9,15 +9,19 @@ const CLIENT_ID = 0;
 
 const RECONNECT_TIMEOUT = 1000;
 
-const ib = new IBApiNext(config.receiver);
-
 const logger = new Logger(ELogLevel.ALL, config.log.hasConsoleOutput, config.log.frequency, config.log.isEnable);
 
-ib.connect(CLIENT_ID);
+let ib: IBApiNext;
 
-ib.error.subscribe((error) => {
-  logger.add('', 'TWS', `${error.error.message}`);
-});
+export const start = async () => {
+  ib = new IBApiNext(config.receiver);
+
+  ib.connect(CLIENT_ID);
+  
+  ib.error.subscribe((error) => {
+    logger.add('', 'TWS', `${error.error.message}`);
+  });
+};
 
 export const handler: THandler = async (message: TMessage) => {
   const timeStart = performance.now();
@@ -90,4 +94,9 @@ export const handler: THandler = async (message: TMessage) => {
   const timeFinish = performance.now();
   
   logger.add(logOrderId, 'HANDLE EXECUTION', (timeFinish - timeStart).toFixed(2));
+};
+
+export default {
+  start,
+  handler,
 };

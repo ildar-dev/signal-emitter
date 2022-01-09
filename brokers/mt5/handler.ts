@@ -21,7 +21,7 @@ const api = new MetaApi(token);
 let account: MetatraderAccount;
 let connection: StreamingMetaApiConnection;
 
-export const start = async () => {
+const start = async () => {
   account = await api.metatraderAccountApi.getAccounts({}).then(_ => _.find(a => a.login === login && a.type.startsWith('cloud'))) as MetatraderAccount;
   console.log('Deploying account');
   await account.deploy();
@@ -40,9 +40,7 @@ export const start = async () => {
   console.log('MT5 READY');
 }
 
-start();
-
-export const handler: THandler = async (message: TMessage) => {
+const handler: THandler = async (message: TMessage) => {
   const timeStart = performance.now();
   const logOrderId = message.orderId;
   const collection = db.collection(message.channelId + '_MT5');
@@ -81,4 +79,9 @@ export const handler: THandler = async (message: TMessage) => {
   const timeFinish = performance.now();
   
   logger.add(logOrderId, 'HANDLE EXECUTION', (timeFinish - timeStart).toFixed(2));
+};
+
+export default {
+  start,
+  handler,
 };

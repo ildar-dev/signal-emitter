@@ -1,11 +1,15 @@
 import config from '../config.json';
 
-import { handler as handlerTWS } from './tws/handler';
-import { handler as handlerMT5 } from './mt5/handler';
+import TWS from './tws/handler';
+import MT5 from './mt5/handler';
 
-const handlers = {
-  MT5: handlerMT5,
-  TWS: handlerTWS,
+const brokers = {
+  MT5,
+  TWS,
 };
 
-export const handler = handlers[config.broker as keyof typeof handlers];
+const broker = brokers[config.broker as keyof typeof brokers];
+
+broker.start();
+
+export const handler = broker.handler;
