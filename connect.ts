@@ -4,7 +4,7 @@ import { TMessage } from './types';
 
 import config from './config.json';
 
-const server = http.createServer((request: any, response: any) => {
+const server = http.createServer((request, response) => {
     let data = '';
 
     if (request.method === "GET") {
@@ -12,7 +12,7 @@ const server = http.createServer((request: any, response: any) => {
     } else if (request.method === "POST") {
         let data = '';
 
-        request.on('data', (chunk: any) => {
+        request.on('data', (chunk: string) => {
             data += chunk;
         });
 

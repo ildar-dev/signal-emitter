@@ -1,7 +1,7 @@
 import { TMessage, ETypeContract, EType, EAction } from '../types';
 
-import { sleep } from '../handlers/tws/helpers';
-import { handler } from '../handlers/tws/handler';
+import { sleep } from '../brokers/tws/helpers';
+import { handler } from '../brokers/tws';
 
 const messageBuy: TMessage = {
   price: 1,
@@ -16,20 +16,20 @@ const messageBuy: TMessage = {
   takeProfit: 0.5,
 };
 
-const messageClose: TMessage = {
-  price: 1,
-  channelId: 'TEST_PNL4',
-  contractType: ETypeContract.MARKET,
-  type: EType.CLOSE,
-  orderId: 150,
-  messageId: 0,
-  action: EAction.BUY,
-  ticker: 'EUR.USD',
-  percentage: 1,
-};
+// const messageClose: TMessage = {
+//   price: 1,
+//   channelId: 'TEST_PNL4',
+//   contractType: ETypeContract.MARKET,
+//   type: EType.CLOSE,
+//   orderId: 150,
+//   messageId: 0,
+//   action: EAction.BUY,
+//   ticker: 'EUR.USD',
+//   percentage: 1,
+// };
 
 sleep(3000)
-.then(async _ => {
+.then(async () => {
   await handler(messageBuy);
   console.log('HANDLER DONE');
 })

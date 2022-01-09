@@ -12,12 +12,16 @@
     "test-connection": "ts-node runs/connection-lost.ts",
     "stat": "ts-node runs/stat.ts",
     "mt5": "ts-node handlers/mt5/handler.ts",
-    "mt5:test": "ts-node handlers/mt5/test.ts"
+    "mt5:test": "ts-node handlers/mt5/test.ts",
+    "lint": "eslint . --ext .ts"
   },
   "author": "Ildar Davletyarov",
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^16.11.6",
+    "@typescript-eslint/eslint-plugin": "^5.9.0",
+    "@typescript-eslint/parser": "^5.9.0",
+    "eslint": "^8.6.0",
     "nodemon": "^2.0.14",
     "ts-node": "^10.4.0",
     "typescript": "^4.4.4"

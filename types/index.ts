@@ -11,7 +11,7 @@ export enum EType {
   OPEN = 'OPEN',
   CLOSE = 'CLOSE',
   MODIFICATION = 'MODIFICATION',
-};
+}
 
 export enum EOrderType {
   OPEN = 'OPEN',
@@ -44,7 +44,7 @@ export type TMessage = {
   previousStopLoss?: number,
   action: EAction,
   percentage: number,
-  analitics?: any,
+  analitics?: Record<string, unknown>,
   extra?: {
     expected: {
       income: number,

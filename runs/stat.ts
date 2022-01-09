@@ -64,8 +64,8 @@ const infoPnl = (execDetails: ExecutionDetail[], documents: TDocumentOrder[]) =>
       return null;
     }
     const side = openOrder?.message.action === EAction.BUY ? -1 : 1;
-    const pnl = +((openIbPrice - closeIbPrice) * side * openOrder!.total).toFixed(6);
-    const channelPnl = +((openChannelPrice - closeChannelPrice) * side * openOrder!.total).toFixed(6);
+    const pnl = openOrder.total ? +((openIbPrice - closeIbPrice) * side * openOrder!.total).toFixed(6) : 0;
+    const channelPnl = openOrder.total ? +((openChannelPrice - closeChannelPrice) * side * openOrder!.total).toFixed(6) : 0;
     channelTotal += channelPnl;
     total += pnl;
     return {
@@ -108,7 +108,7 @@ sleep(800)
   console.table(await lastValueFrom(ib.getAccountSummary('All', tags.join(','))
     .pipe(
       timeout(2000),
-      map((_) => Array.from(Array.from(_.all, ([_name, value]) => value)[0], ([name, value]) => ({ name, value: value.get(CURRENCY)?.value }))),
+      map((_) => Array.from(Array.from(_.all, ([, value]) => value)[0], ([name, value]) => ({ name, value: value.get(CURRENCY)?.value }))),
       takeWhile((_) => (_.length < tags.length), true),
     )));
   ib.disconnect();

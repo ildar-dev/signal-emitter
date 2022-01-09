@@ -2,7 +2,7 @@ import { mongoClient, db } from '../mongodb';
 
 const collectionsNames = process.argv.slice(2);
 
-mongoClient.connect().then(async _ => {
+mongoClient.connect().then(async () => {
   for(const name of collectionsNames) {
     try {
       await db.collection(name).drop();
@@ -11,4 +11,4 @@ mongoClient.connect().then(async _ => {
       console.error('\x1b[31m', name, error);
     }
   }
-}).then(_ => { mongoClient.close() });
+}).then(() => { mongoClient.close() });

@@ -1,4 +1,5 @@
 import { THandler, TBroker, TStarter, TMessage, EType, EAction } from '../../types';
+import { TDocument } from './types';
 import { db } from '../../mongodb';
 import { Logger, ELogLevel } from '../../logger';
 import config from '../../config.json';
@@ -10,8 +11,8 @@ const TOTAL_CASH = 1000000;
 
 // @todo: CHANGE ACC BEFORE PAYMENT. REPO IS PUBLIC
 
-let token = process.env.TOKEN || 'eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI0Zjg4OWMyYjI1MDUzNmVjNTQ0MTBlMDEzNzMwNmViNCIsInBlcm1pc3Npb25zIjpbXSwidG9rZW5JZCI6IjIwMjEwMjEzIiwiaWF0IjoxNjQxNjQ0OTY4LCJyZWFsVXNlcklkIjoiNGY4ODljMmIyNTA1MzZlYzU0NDEwZTAxMzczMDZlYjQifQ.dMQUii-iIwvg7h7hywN373EtJQt3fPf731Ixe9N7U0gF3WOuG5mvKqRYENi9_C8gWznd41aXv14d3ZyLjtIDrGKkHryMREeG66514Zd4VmZJQSTyHWof5glZ39-MyxsIzhIUxAosXhVwmoyt6x2sVOtWs1p0l3-8LO8dnU3Lhp58xFh-gUnLIHwRk1Vvs5JA3Fo8VbS6F285aQRQLTfKSLmYYVUCTgLAQsk6k-rtmYLId3i3Iwxr2zrGJxSBLjcRYQwiWgbHahfh8Jrw1pWbbQInbF0QxysTh8lWKmmWZZTClytdYwtOVZfRuikm7jUezMIVQJFbTVcVd-EQgLCYZQXkdeSoy90rxdyGjiM9jl9m78J2NvLdU6Vg8ibP7YvpPmZQALACsezFKuDdNJMn1CE8VJafzd1Vc64b4R3z7L3kqin3SL8Q2KkD8HwsUHoE-sxDyduU6kzHXYocO14h1eR4DtqrHlBuOGMPHoKA3Bkr7nQygqxFOsC_19n31Hdc3yfqK-aGdSxTo8DibgNv4cQfO9XBcDsW5Zpuw_lvIlsNeoAEMPFvwDDW-psmi7bYeibQFiI3vFzYKuVzmW1-e3EHTGqJ_ee9Tu3djzvM8pgS4htzJuHbyUGEch563Wu1RenhkovM6_ANewHsEpQzqsZ-4ANV2tQdH0qZX9ThVTU';
-let login = process.env.LOGIN || '67033143';
+const token = process.env.TOKEN || 'eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI0Zjg4OWMyYjI1MDUzNmVjNTQ0MTBlMDEzNzMwNmViNCIsInBlcm1pc3Npb25zIjpbXSwidG9rZW5JZCI6IjIwMjEwMjEzIiwiaWF0IjoxNjQxNjQ0OTY4LCJyZWFsVXNlcklkIjoiNGY4ODljMmIyNTA1MzZlYzU0NDEwZTAxMzczMDZlYjQifQ.dMQUii-iIwvg7h7hywN373EtJQt3fPf731Ixe9N7U0gF3WOuG5mvKqRYENi9_C8gWznd41aXv14d3ZyLjtIDrGKkHryMREeG66514Zd4VmZJQSTyHWof5glZ39-MyxsIzhIUxAosXhVwmoyt6x2sVOtWs1p0l3-8LO8dnU3Lhp58xFh-gUnLIHwRk1Vvs5JA3Fo8VbS6F285aQRQLTfKSLmYYVUCTgLAQsk6k-rtmYLId3i3Iwxr2zrGJxSBLjcRYQwiWgbHahfh8Jrw1pWbbQInbF0QxysTh8lWKmmWZZTClytdYwtOVZfRuikm7jUezMIVQJFbTVcVd-EQgLCYZQXkdeSoy90rxdyGjiM9jl9m78J2NvLdU6Vg8ibP7YvpPmZQALACsezFKuDdNJMn1CE8VJafzd1Vc64b4R3z7L3kqin3SL8Q2KkD8HwsUHoE-sxDyduU6kzHXYocO14h1eR4DtqrHlBuOGMPHoKA3Bkr7nQygqxFOsC_19n31Hdc3yfqK-aGdSxTo8DibgNv4cQfO9XBcDsW5Zpuw_lvIlsNeoAEMPFvwDDW-psmi7bYeibQFiI3vFzYKuVzmW1-e3EHTGqJ_ee9Tu3djzvM8pgS4htzJuHbyUGEch563Wu1RenhkovM6_ANewHsEpQzqsZ-4ANV2tQdH0qZX9ThVTU';
+const login = process.env.LOGIN || '67033143';
 // let password = process.env.PASSWORD || 'C9a92134D';
 // let serverName = process.env.SERVER || 'RoboForex-ECN';
 // let serverDatFile = process.env.PATH_TO_SERVERS_DAT || './servers.dat';
@@ -57,11 +58,11 @@ const handler: THandler = async (message: TMessage) => {
       await collection.insertOne({
         orderMessageId: message.orderId,
         order,
-      });
+      } as TDocument);
       break;
     }
     case EType.MODIFICATION: {
-      const document = await collection.findOne({ orderMessageId: message.orderId }) as any;
+      const document = await collection.findOne({ orderMessageId: message.orderId }) as TDocument;
       if (!document?.order?.positionId) {
         logger.error(logOrderId, 'TRY MODIFICATE WITHOUT OPEN');
       }
@@ -72,7 +73,7 @@ const handler: THandler = async (message: TMessage) => {
       break;
     }
     case EType.CLOSE: {
-      const document = await collection.findOne({ orderMessageId: message.orderId }) as any;
+      const document = await collection.findOne({ orderMessageId: message.orderId }) as TDocument;
       if (!document?.order?.positionId) {
         logger.error(logOrderId, 'TRY CLOSE WITHOUT OPEN');
       }
