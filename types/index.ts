@@ -26,8 +26,8 @@ export enum ETypeContract {
 }
 
 export enum EAction {
-  BUY = 'buy',
-  SELL = 'sell',
+  BUY = 'BUY',
+  SELL = 'SELL',
 }
 
 export type TMessage = {
