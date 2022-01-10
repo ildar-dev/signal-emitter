@@ -17,7 +17,13 @@ const login = process.env.LOGIN || '67033143';
 // let serverName = process.env.SERVER || 'RoboForex-ECN';
 // let serverDatFile = process.env.PATH_TO_SERVERS_DAT || './servers.dat';
 
-const api = new MetaApi(token);
+const api = new MetaApi(token, {
+  retryOpts: {
+    minDelayInSeconds: 0.3,
+    maxDelayInSeconds: 1,
+    retries: 50,
+  }
+});
 
 let account: MetatraderAccount;
 let connection: StreamingMetaApiConnection;
