@@ -46,7 +46,8 @@ const handler: THandler = async (message: TMessage) => {
   const logOrderId = message.orderId;
   const collection = db.collection(message.channelId + '_MT5');
   const ticker = message.ticker.split('.').join('');
-  const TOTAL_QUANTITY = Math.ceil(TOTAL_CASH * (message.percentage / 100));
+  const TOTAL_QUANTITY = 10;
+  // Math.ceil(TOTAL_CASH * (message.percentage / 100));
   switch (message.type) {
     case EType.OPEN: {
       const order = await connection[message.action === EAction.BUY ? 'createLimitBuyOrder' : 'createLimitSellOrder'](ticker, TOTAL_QUANTITY, message.price, message.stopLoss, message.takeProfit, {
