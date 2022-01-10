@@ -50,8 +50,8 @@ const handler: THandler = async (message: TMessage) => {
   // Math.ceil(TOTAL_CASH * (message.percentage / 100));
   switch (message.type) {
     case EType.OPEN: {
-      const order = await connection[message.action === EAction.BUY ? 'createLimitBuyOrder' : 'createLimitSellOrder'](ticker, TOTAL_QUANTITY, message.price, message.stopLoss, message.takeProfit, {
-        comment: message.toString(),
+      const order = await connection[message.action === EAction.BUY ? 'createMarketBuyOrder' : 'createMarketSellOrder'](ticker, TOTAL_QUANTITY, message.stopLoss, message.takeProfit, {
+        comment: `${message.price} : ${message.orderId}`,
       });
 
       logger.add(logOrderId, 'OPEN', order);
