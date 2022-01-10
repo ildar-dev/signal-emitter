@@ -1,9 +1,9 @@
-import { THandler, TBroker, TStarter, TMessage, EType, EAction } from '../../types';
+import { THandler, TBroker, TStarter, TMessage, EType, EAction, ETypeContract } from '../../types';
 import { TDocument } from './types';
 import { db } from '../../mongodb';
 import { Logger, ELogLevel } from '../../logger';
 import config from '../../config.json';
-import MetaApi, { MetatraderAccount, StreamingMetaApiConnection } from 'metaapi.cloud-sdk';
+import MetaApi, { MetatraderAccount, PendingTradeOptions, StreamingMetaApiConnection } from 'metaapi.cloud-sdk';
 
 const logger = new Logger(ELogLevel.ALL, config.log.hasConsoleOutput, config.log.frequency, config.log.isEnable);
 
@@ -50,9 +50,13 @@ const handler: THandler = async (message: TMessage) => {
   // Math.ceil(TOTAL_CASH * (message.percentage / 100));
   switch (message.type) {
     case EType.OPEN: {
-      const order = await connection[message.action === EAction.BUY ? 'createMarketBuyOrder' : 'createMarketSellOrder'](ticker, TOTAL_QUANTITY, message.stopLoss, message.takeProfit, {
+      const options: PendingTradeOptions = {
         comment: `${message.price} : ${message.orderId}`,
-      });
+      };
+
+      const order = message.contractType === ETypeContract.MARKET
+      ? await connection[message.action === EAction.BUY ? 'createMarketBuyOrder' : 'createMarketSellOrder'](ticker, TOTAL_QUANTITY, message.stopLoss, message.takeProfit, options)
+      : await connection[message.action === EAction.BUY ? 'createLimitBuyOrder' : 'createLimitSellOrder'](ticker, TOTAL_QUANTITY, message.price, message.stopLoss, message.takeProfit, options)
 
       logger.add(logOrderId, 'OPEN', order);
 
