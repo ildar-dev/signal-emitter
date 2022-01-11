@@ -7,7 +7,7 @@ import MetaApi, { MetatraderAccount, PendingTradeOptions, StreamingMetaApiConnec
 
 const logger = new Logger(ELogLevel.ALL, config.log.hasConsoleOutput, config.log.frequency, config.log.isEnable);
 
-const TOTAL_CASH = 1000000;
+const TOTAL_CASH = 1000;
 
 // @todo: CHANGE ACC BEFORE PAYMENT. REPO IS PUBLIC
 
@@ -52,7 +52,7 @@ const handler: THandler = async (message: TMessage) => {
   const logOrderId = message.orderId;
   const collection = db.collection(message.channelId + '_MT5');
   const ticker = message.ticker.split('.').join('');
-  const TOTAL_QUANTITY = 10;
+  const TOTAL_QUANTITY = 0.01;
   // Math.ceil(TOTAL_CASH * (message.percentage / 100));
   switch (message.type) {
     case EType.OPEN: {
