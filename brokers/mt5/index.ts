@@ -3,19 +3,14 @@ import { TDocument } from './types';
 import { db } from '../../mongodb';
 import { Logger, ELogLevel } from '../../logger';
 import config from '../../config.json';
-import MetaApi, { MetatraderAccount, PendingTradeOptions, StreamingMetaApiConnection } from 'metaapi.cloud-sdk';
+import MetaApi, { MetatraderAccount, MetatraderTradeResponse, PendingTradeOptions, StreamingMetaApiConnection } from 'metaapi.cloud-sdk';
 
 const logger = new Logger(ELogLevel.ALL, config.log.hasConsoleOutput, config.log.frequency, config.log.isEnable);
 
 const TOTAL_CASH = 1000000;
 
-// @todo: CHANGE ACC BEFORE PAYMENT. REPO IS PUBLIC
-
 const token = process.env.TOKEN || 'eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI0Zjg4OWMyYjI1MDUzNmVjNTQ0MTBlMDEzNzMwNmViNCIsInBlcm1pc3Npb25zIjpbXSwidG9rZW5JZCI6IjIwMjEwMjEzIiwiaWF0IjoxNjQxNjQ0OTY4LCJyZWFsVXNlcklkIjoiNGY4ODljMmIyNTA1MzZlYzU0NDEwZTAxMzczMDZlYjQifQ.dMQUii-iIwvg7h7hywN373EtJQt3fPf731Ixe9N7U0gF3WOuG5mvKqRYENi9_C8gWznd41aXv14d3ZyLjtIDrGKkHryMREeG66514Zd4VmZJQSTyHWof5glZ39-MyxsIzhIUxAosXhVwmoyt6x2sVOtWs1p0l3-8LO8dnU3Lhp58xFh-gUnLIHwRk1Vvs5JA3Fo8VbS6F285aQRQLTfKSLmYYVUCTgLAQsk6k-rtmYLId3i3Iwxr2zrGJxSBLjcRYQwiWgbHahfh8Jrw1pWbbQInbF0QxysTh8lWKmmWZZTClytdYwtOVZfRuikm7jUezMIVQJFbTVcVd-EQgLCYZQXkdeSoy90rxdyGjiM9jl9m78J2NvLdU6Vg8ibP7YvpPmZQALACsezFKuDdNJMn1CE8VJafzd1Vc64b4R3z7L3kqin3SL8Q2KkD8HwsUHoE-sxDyduU6kzHXYocO14h1eR4DtqrHlBuOGMPHoKA3Bkr7nQygqxFOsC_19n31Hdc3yfqK-aGdSxTo8DibgNv4cQfO9XBcDsW5Zpuw_lvIlsNeoAEMPFvwDDW-psmi7bYeibQFiI3vFzYKuVzmW1-e3EHTGqJ_ee9Tu3djzvM8pgS4htzJuHbyUGEch563Wu1RenhkovM6_ANewHsEpQzqsZ-4ANV2tQdH0qZX9ThVTU';
 const login = process.env.LOGIN || '67033143';
-// let password = process.env.PASSWORD || 'C9a92134D';
-// let serverName = process.env.SERVER || 'RoboForex-ECN';
-// let serverDatFile = process.env.PATH_TO_SERVERS_DAT || './servers.dat';
 
 const api = new MetaApi(token, {
   retryOpts: {
@@ -77,8 +72,14 @@ const handler: THandler = async (message: TMessage) => {
       if (!document?.order?.positionId) {
         logger.error(logOrderId, 'TRY MODIFICATE WITHOUT OPEN');
       }
-      const order = await connection.modifyPosition(document.order.positionId, message.stopLoss, message.takeProfit); // modificate
-
+      let order: MetatraderTradeResponse | null = null;
+      try {
+        order = await connection.modifyPosition(document.order.positionId, message.stopLoss, message.takeProfit); // modificate
+      } catch(error) {
+        console.error(error);
+        logger.add(logOrderId, 'MODIFICATE PENDING ORDER', { document });
+        order = await connection.modifyOrder(document.order.orderId, message.price, message.stopLoss, message.takeProfit);
+      }
       logger.add(logOrderId, 'MODIFICATE', { document, order });
       await collection.findOneAndUpdate({ orderMessageId: message.orderId }, { order }); // update info about order in mongo
       break;
@@ -88,7 +89,16 @@ const handler: THandler = async (message: TMessage) => {
       if (!document?.order?.positionId) {
         logger.error(logOrderId, 'TRY CLOSE WITHOUT OPEN');
       }
-      const order = connection.closePosition(document.order.positionId, {});
+      let order: MetatraderTradeResponse | null = null;
+      try {
+        order = await connection.closePosition(document.order.positionId, {
+          comment: `CLOSE price: ${message.price}; TP: ${message.takeProfit}; SL: ${message.stopLoss}`
+        }); // modificate
+      } catch(error) {
+        console.error(error);
+        logger.add(logOrderId, 'CLOSE PENDING ORDER', { document });
+        order = await connection.cancelOrder(document.order.orderId);
+      }
       logger.add(logOrderId, 'MODIFICATE', { document, order });
       break;
     }
