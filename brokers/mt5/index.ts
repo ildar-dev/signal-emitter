@@ -1,4 +1,4 @@
-import { THandler, TBroker, TStarter, TMessage, EType, EAction, ETypeContract } from '../../types';
+import { THandler, TBroker, TStarter, TMessage, EType, EAction, ETypeContract, TDocumentOrder } from '../../types';
 import { TDocument } from './types';
 import { db } from '../../mongodb';
 import { Logger, ELogLevel } from '../../logger';
@@ -50,66 +50,78 @@ const starter: TStarter = async () => {
 
 const handler: THandler = async (message: TMessage) => {
   const timeStart = performance.now();
-  const logOrderId = message.orderId;
+  const orderId = message.orderId;
   const collection = db.collection(message.channelId + '_MT5');
   const ticker = message.ticker.split('.').join('');
   const TOTAL_QUANTITY = 0.01;
   switch (message.type) {
     case EType.OPEN: {
       const options: PendingTradeOptions = {
-        comment: `${message.price} : ${message.orderId}`,
+        comment: `${message.price} : ${orderId}`,
       };
 
       const order = message.contractType === ETypeContract.MARKET
       ? await connection[message.action === EAction.BUY ? 'createMarketBuyOrder' : 'createMarketSellOrder'](ticker, TOTAL_QUANTITY, message.stopLoss, message.takeProfit, options)
       : await connection[message.action === EAction.BUY ? 'createLimitBuyOrder' : 'createLimitSellOrder'](ticker, TOTAL_QUANTITY, message.price, message.stopLoss, message.takeProfit, options)
 
-      logger.add(logOrderId, 'OPEN', order);
+      logger.add(orderId, 'OPEN', order);
 
       await collection.insertOne({
-        orderMessageId: message.orderId,
+        orderMessageId: orderId,
         order,
       } as TDocument);
       break;
     }
     case EType.MODIFICATION: {
-      const document = await collection.findOne({ orderMessageId: message.orderId }) as TDocument;
-      if (!document?.order?.positionId) {
-        logger.error(logOrderId, 'TRY MODIFICATE WITHOUT OPEN');
+      let document: TDocument;
+      try {
+        document = await collection.findOne({ orderMessageId: orderId }) as TDocument;
+      } catch (error) {
+        logger.error(orderId, `DOES NOT EXIST ${orderId}`, error);
+        break;
+      }
+      if (!document!.order?.positionId) {
+        logger.error(orderId, 'TRY MODIFICATE WITHOUT OPEN');
       }
       let order: MetatraderTradeResponse | null = null;
       try {
-        order = await connection.modifyPosition(document.order.positionId, message.stopLoss, message.takeProfit); // modificate
+        order = await connection.modifyPosition(document!.order.positionId, message.stopLoss, message.takeProfit); // modificate
       } catch(error) {
         console.error(error);
-        logger.add(logOrderId, 'MODIFICATE PENDING ORDER', { document });
+        logger.add(orderId, 'MODIFICATE PENDING ORDER', { document });
         order = await connection.modifyOrder(document.order.orderId, message.price, message.stopLoss, message.takeProfit);
       }
-      logger.add(logOrderId, 'MODIFICATE', { document, order });
-      await collection.findOneAndUpdate({ orderMessageId: message.orderId }, { order }); // update info about order in mongo
+      logger.add(orderId, 'MODIFICATE', { document, order });
+      await collection.findOneAndUpdate({ orderMessageId: orderId }, { order }); // update info about order in mongo
       break;
     }
     case EType.CLOSE: {
-      const document = await collection.findOne({ orderMessageId: message.orderId }) as TDocument;
+      let document: TDocument;
+      try {
+        document = await collection.findOne({ orderMessageId: orderId }) as TDocument;
+      } catch (error) {
+        logger.error(orderId, `DOES NOT EXIST ${orderId}`, error);
+        break;
+      }
       if (!document?.order?.positionId) {
-        logger.error(logOrderId, 'TRY CLOSE WITHOUT OPEN');
+        logger.error(orderId, 'TRY CLOSE WITHOUT OPEN');
       }
       let order: MetatraderTradeResponse | null = null;
       try {
-        order = await connection.closePosition(document.order.positionId, {}); // modificate
+        order = await connection.closePosition(document.order.positionId, {});
       } catch(error) {
         console.error(error);
-        logger.add(logOrderId, 'CLOSE PENDING ORDER', { document });
+        logger.add(orderId, 'CLOSE PENDING ORDER', { document });
         order = await connection.cancelOrder(document.order.orderId);
       }
-      logger.add(logOrderId, 'CLOSE', { document, order });
+      logger.add(orderId, 'CLOSE', { document, order });
       break;
     }
   }
 
   const timeFinish = performance.now();
   
-  logger.add(logOrderId, 'HANDLE EXECUTION', (timeFinish - timeStart).toFixed(2));
+  logger.add(orderId, 'HANDLE EXECUTION', (timeFinish - timeStart).toFixed(2));
 };
 
 export default {
