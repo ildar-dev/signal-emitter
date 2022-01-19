@@ -102,7 +102,7 @@ const handler: THandler = async (message: TMessage) => {
         logger.add(logOrderId, 'CLOSE PENDING ORDER', { document });
         order = await connection.cancelOrder(document.order.orderId);
       }
-      logger.add(logOrderId, 'MODIFICATE', { document, order });
+      logger.add(logOrderId, 'CLOSE', { document, order });
       break;
     }
   }
