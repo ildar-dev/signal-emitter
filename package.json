@@ -13,7 +13,7 @@
     "stat": "ts-node runs/stat.ts",
     "mt5": "ts-node handlers/mt5/handler.ts",
     "mt5:test": "ts-node handlers/mt5/test.ts",
-    "lint": "eslint . --ext .ts"
+    "lint": "eslint . --ext .ts --fix"
   },
   "author": "Ildar Davletyarov",
   "license": "ISC",

@@ -1,6 +1,7 @@
 import http from 'http';
 import { handler } from './brokers/index';
 import { TMessage } from './types';
+import { errorSerializer, serializer } from './logger';
 
 import config from './config.json';
 
@@ -28,9 +29,8 @@ const server = http.createServer((request, response) => {
             }
             try {
               await handler(dataJson as TMessage);
-            } catch(e) {
-              console.error('HANDLER ERROR');
-              console.error(e);
+            } catch(error) {
+              console.error('ERROR handler', serializer(errorSerializer(error)));
             }
         })
     }
@@ -38,5 +38,5 @@ const server = http.createServer((request, response) => {
     response.end(data);
 });
 
-console.log('START LISTEN');
+console.log('🚀 Start listen server');
 server.listen(config.sender.port, config.sender.host);

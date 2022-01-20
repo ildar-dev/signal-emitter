@@ -23,6 +23,34 @@ const formatter = new Intl.DateTimeFormat('ru', {
   second: '2-digit',
   timeZone: config.log.timeZone,
 })
+
+export const errorSerializer = (error: any): string => {
+  return error.details || error.message || error.stringCode || error;
+}
+
+export const serializer = (value: any): string => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  if (value.getTime) {
+    return formatter.format(value);
+  }
+  if (Array.isArray(value)) {
+   return value.map(serializer).join(', ')
+  } else {
+    switch (typeof value) {
+      case 'function': {
+        return value.toString();
+      }
+      case 'object': {
+        return `{ ${Object.entries(value).map(([key, v]) => `${key}: ${serializer(v)}`).join(', ')} }`
+      }
+      default: {
+        return value;
+      }
+    }
+  }
+}
 export class Logger {
   messages: TLog[] = [];
 
@@ -41,11 +69,11 @@ export class Logger {
     this.isEnable = isEnable;
   }
 
-  add(orderId: number | '', message: string, meta: unknown = '', level = this.level) {
+  add(orderId: number | '', message: string, meta: any = null, level = this.level) {
     if (!this.hasConsoleLog) {
       return;
     }
-    console.log(level === ELogLevel.ERROR ? '\x1b[31m' : '\x1b[33m', ...[message, meta, formatter.format(Date.now()), orderId]);
+    console.log(level === ELogLevel.ERROR ? '\x1b[31m' : '\x1b[33m', ...[orderId, message, serializer(meta), formatter.format(Date.now())]);
   }
 
   error(orderId: number, message: string, meta?: unknown) {
