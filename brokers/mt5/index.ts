@@ -35,19 +35,18 @@ const starter: TStarter = async () => {
   await account.deploy();
   console.log('✔️ Waiting for API');
   await account.waitConnected();
-
-  // connect to MetaApi API
   //@ts-ignore
   connection = account.getStreamingConnection();
   await connection.connect();
-
-  // wait until terminal state synchronized to the local state
   console.log('✔️ Waiting for SDK to synchronize');
   //@ts-ignore
   await connection.waitSynchronized();
   console.log('✔️ MT5 READY');
 }
-
+/*
+Модификация и закрытие сейчас работают с тем учетом, что сигналы присылаются только по маркету
+поскольку расчитывем на то, что в опен-документе будет positionId
+*/
 const handler: THandler = async (message: TMessage) => {
   const timeStart = performance.now();
   const orderId = message.orderId;
