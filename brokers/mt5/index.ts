@@ -120,7 +120,7 @@ const handler: THandler = async (message: TMessage) => {
 
   const timeFinish = performance.now();
   
-  logger.add(orderId, 'execution', (timeFinish - timeStart).toFixed(2));
+  logger.add(orderId, 'TIME', (timeFinish - timeStart).toFixed(2));
 };
 
 export default {
