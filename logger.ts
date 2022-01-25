@@ -1,6 +1,8 @@
 import { TMessage } from './types';
 import config from './config.json';
 
+let request = require('request');
+
 export enum ELogLevel {
   ALL = 'ALL',
   ERROR = 'ERROR',
@@ -74,6 +76,20 @@ export class Logger {
       return;
     }
     console.log(level === ELogLevel.ERROR ? '\x1b[31m' : '\x1b[33m', ...[orderId, message, serializer(meta), formatter.format(Date.now())]);
+
+    const options = {
+      uri: `http://${config.log.server.host}:${config.log.server.host}`,
+      method: 'POST',
+      json: {
+        "message": `<b>#self_id${orderId}</b>\n, ${message} \n\n ${serializer(meta)}`
+      }
+    };
+
+    request(options, (error: any) => {
+      if (error) {
+        console.log(error);
+      }
+    });
   }
 
   error(orderId: number, message: string, meta?: unknown) {

@@ -4,7 +4,11 @@
     "isEnable": true,
     "hasConsoleOutput": true,
     "frequency": 1,
-    "timeZone": "Europe/Moscow"
+    "timeZone": "Europe/Moscow",
+    "server": {
+      "host": "127.0.0.1",
+      "port": 4005
+    }
   },
   "sender": {
     "host": "172.17.0.1",
