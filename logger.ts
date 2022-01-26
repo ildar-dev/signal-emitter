@@ -71,17 +71,17 @@ export class Logger {
     this.isEnable = isEnable;
   }
 
-  add(orderId: number | '', message: string, meta: any = null, level = this.level) {
+  add(message: TMessage, string: string, meta: any = null, extraMessage: string | null = null, level = this.level) {
     if (!this.hasConsoleLog) {
       return;
     }
-    console.log(level === ELogLevel.ERROR ? '\x1b[31m' : '\x1b[33m', ...[orderId, message, serializer(meta), formatter.format(Date.now())]);
+    console.log(level === ELogLevel.ERROR ? '\x1b[31m' : '\x1b[33m', ...[message.orderId, string, serializer(meta), formatter.format(Date.now())]);
 
     const options = {
       uri: `http://${config.log.server.host}:${config.log.server.port}`,
       method: 'POST',
       json: {
-        "message": `<b>#self_id${orderId}</b>\n, ${message} \n\n ${serializer(meta)}`
+        "message": `*#id${message.orderId}*\n${string}\n${serializer(meta)}\n${extraMessage}`
       }
     };
 
@@ -92,7 +92,7 @@ export class Logger {
     });
   }
 
-  error(orderId: number, message: string, meta?: unknown) {
-    this.add(orderId, message, meta, ELogLevel.ERROR);
+  error(message: TMessage, string: string, meta?: unknown, extraMessage: string | null = null) {
+    this.add(message, string, meta, extraMessage, ELogLevel.ERROR);
   }
 } 

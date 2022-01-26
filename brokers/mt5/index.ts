@@ -1,14 +1,12 @@
-import { THandler, TBroker, TStarter, TMessage, EType, EAction, ETypeContract, TDocumentOrder } from '../../types';
+import { THandler, TBroker, TStarter, TMessage, EType, EAction, ETypeContract } from '../../types';
 import { TDocument } from './types';
 import { db } from '../../mongodb';
-import { Logger, errorSerializer, ELogLevel, serializer } from '../../logger';
+import { Logger, errorSerializer, ELogLevel } from '../../logger';
 import config from '../../config.json';
 import MetaApi, { MetatraderAccount, MetatraderTradeResponse, PendingTradeOptions, StreamingMetaApiConnection } from 'metaapi.cloud-sdk';
 import { exit } from 'process';
 
 const logger = new Logger(ELogLevel.ALL, config.log.hasConsoleOutput, config.log.frequency, config.log.isEnable);
-
-const TOTAL_CASH = process.env.TOTAL_CASH;
 
 const token = process.env.MT5_TOKEN as string;
 const login = process.env.MT5_LOGIN as string;
@@ -19,9 +17,12 @@ if (!token || !login) {
 }
 
 const api = new MetaApi(token, {
+  requestTimeout: 0.2,
+  connectTimeout: 0.2,
+  packetOrderingTimeout: 0.2,
   retryOpts: {
-    minDelayInSeconds: 0.3,
-    maxDelayInSeconds: 1,
+    minDelayInSeconds: 0.5,
+    maxDelayInSeconds: 30,
     retries: 50,
   }
 });
@@ -68,7 +69,7 @@ const handler: THandler = async (message: TMessage) => {
         order,
       } as TDocument);
 
-      logger.add(orderId, 'OPEN', order);
+      logger.add(message, 'OPEN', order);
       break;
     }
     case EType.MODIFICATION: {
@@ -76,20 +77,20 @@ const handler: THandler = async (message: TMessage) => {
       try {
         document = await collection.findOne({ orderMessageId: orderId }) as TDocument;
       } catch (error) {
-        logger.error(orderId, `NOT EXIST ${orderId}`, errorSerializer(error));
+        logger.error(message, `NOT EXIST ${orderId}`, errorSerializer(error));
         break;
       }
       if (!document?.order) {
-        logger.error(orderId, 'TRY MODIFICATE without open');
+        logger.error(message, 'TRY MODIFICATE without open', null);
         break;
       }
       let order: MetatraderTradeResponse | null = null;
       try {
         order = await connection.modifyPosition(document!.order.positionId, message.stopLoss, message.takeProfit); // modificate
-        logger.add(orderId, 'MODIFICATE position');
+        logger.add(message, 'MODIFICATE position', null, `*#pos${document.order.positionId}*`);
       } catch(error) {
         order = await connection.modifyOrder(document.order.orderId, message.price, message.stopLoss, message.takeProfit);
-        logger.add(orderId, 'MODIFICATE order');
+        logger.add(message, 'MODIFICATE order', null);
       }
       await collection.findOneAndUpdate({ orderMessageId: orderId }, { order }); // update info about order in mongo
       break;
@@ -99,20 +100,20 @@ const handler: THandler = async (message: TMessage) => {
       try {
         document = await collection.findOne({ orderMessageId: orderId }) as TDocument;
       } catch (error) {
-        logger.error(orderId, `NOT EXIST ${orderId}`, errorSerializer(error));
+        logger.error(message, `NOT EXIST ${orderId}`, errorSerializer(error));
         break;
       }
       if (!document?.order) {
-        logger.error(orderId, 'TRY CLOSE without open');
+        logger.error(message, 'TRY CLOSE without open');
         break;
       }
       let order: MetatraderTradeResponse | null = null;
       try {
         order = await connection.closePosition(document.order.positionId, {});
-        logger.add(orderId, 'CLOSE position', order);
+        logger.add(message, 'CLOSE position', order, `*#pos${document.order.positionId}*`);
       } catch(error) {
         order = await connection.cancelOrder(document.order.orderId);
-        logger.add(orderId, 'CLOSE (CANCEL) order');
+        logger.add(message, 'CLOSE (cancel) order');
       }
       break;
     }
@@ -120,7 +121,7 @@ const handler: THandler = async (message: TMessage) => {
 
   const timeFinish = performance.now();
   
-  logger.add(orderId, 'TIME', (timeFinish - timeStart).toFixed(2));
+  logger.add(message, 'TIME', (timeFinish - timeStart).toFixed(2));
 };
 
 export default {
