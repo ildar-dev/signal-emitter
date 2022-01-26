@@ -52,7 +52,7 @@ const handler: THandler = async (message: TMessage) => {
   const orderId = message.orderId;
   const collection = db.collection(message.channelId + '_MT5');
   const ticker = message.ticker.split('.').join('');
-  const TOTAL_QUANTITY = 0.01;
+  const TOTAL_QUANTITY = 0.02;
   switch (message.type) {
     case EType.OPEN: {
       const options: PendingTradeOptions = {
