@@ -78,7 +78,7 @@ export class Logger {
     console.log(level === ELogLevel.ERROR ? '\x1b[31m' : '\x1b[33m', ...[orderId, message, serializer(meta), formatter.format(Date.now())]);
 
     const options = {
-      uri: `http://${config.log.server.host}:${config.log.server.host}`,
+      uri: `http://${config.log.server.host}:${config.log.server.port}`,
       method: 'POST',
       json: {
         "message": `<b>#self_id${orderId}</b>\n, ${message} \n\n ${serializer(meta)}`
