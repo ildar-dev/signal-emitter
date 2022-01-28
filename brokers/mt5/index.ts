@@ -137,7 +137,7 @@ const baseHandler = async (message: TMessage, logger: Logger) => {
 
   const timeFinish = performance.now();
   
-  logger.add((timeFinish - timeStart).toFixed(2), ' ms');
+  logger.add(`${(timeFinish - timeStart).toFixed(2)} ms`);
 };
 
 export default {

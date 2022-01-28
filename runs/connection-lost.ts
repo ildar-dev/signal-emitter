@@ -4,7 +4,7 @@ import { sleep } from '../brokers/tws/helpers';
 import { handler } from '../brokers';
 import { exit } from 'process';
 
-const orderId = 27;
+const orderId = 30;
 const channelId = 'TEST_MT5';
 const ticker = 'EUR.USD';
 
@@ -32,18 +32,14 @@ const messageClose: TMessage = {
   percentage: 1,
 };
 
-sleep(8000)
+sleep(20000)
 .then(async () => {
-  handler(messageBuy);
+  handler(JSON.stringify(messageBuy));
   console.log('HANDLER DONE');
-  handler({...messageBuy, orderId: orderId + 1});
-  console.log('HANDLER DONE 2');
-  handler({...messageBuy, orderId: orderId + 2});
-  console.log('HANDLER DONE 3');
 })
 .then(async () => {
   await sleep(4000);
-  handler(messageClose);
+  handler(JSON.stringify(messageClose));
   console.log('HANDLER 2 FINISH');
 })
 

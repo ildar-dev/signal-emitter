@@ -1,3 +1,6 @@
+// @todo fix THandler types
+//@ts-nocheck
+//@ts-ignore
 import { Contract, OrderType, Order, OrderAction, IBApiNext, SecType } from '@stoqey/ib';
 import { TMessage, EAction, ETypeContract, EOrderType, TDocumentOrder } from '../../types';
 import { Logger } from '../../logger';
