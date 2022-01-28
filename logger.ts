@@ -74,7 +74,7 @@ export class Logger {
   }
 
   error(...strings: string[]) {
-    this.add('❌ ', ...strings);
+    this.add(`❌ ${strings[0]}`, ...strings.slice(1));
   }
 
   push(message: TMessage) {
