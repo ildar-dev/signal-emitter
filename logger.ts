@@ -57,23 +57,20 @@ export const serializer = (value: any): string => {
 export class Logger {
   messages: string[][] = [];
 
-  level!: ELogLevel;
-
-  hasConsoleLog!: boolean;
-
-  frequency!: number;
-
+  hasConsoleOutput!: boolean;
+  hasApiOutput!: boolean;
   isEnable!: boolean;
 
-  constructor(level: ELogLevel, hasConsoleLog = true, frequency = 1, isEnable = true) {
-    this.level = level;
-    this.frequency = frequency;
-    this.hasConsoleLog = hasConsoleLog;
+  constructor(hasConsoleOutput = true, hasApiOutput = true, isEnable = true) {
+    this.hasConsoleOutput = hasConsoleOutput;
+    this.hasApiOutput = hasApiOutput;
     this.isEnable = isEnable;
   }
 
   add(...strings: string[]) {
-    this.messages.push(strings);
+    if (this.isEnable) {
+      this.messages.push(strings);
+    }
   }
 
   error(...strings: string[]) {
@@ -81,23 +78,26 @@ export class Logger {
   }
 
   push(message: TMessage) {
-    const now = formatter.format(Date.now());
-    if (this.hasConsoleLog) {
-      console.log(`${ message.orderId } ${ this.messages.map(_ => _.join(' ')).join(' | ') } | ${ now }`);
+    if (!this.isEnable) {
       return;
     }
-    const options = {
-      uri: `http://${config.log.server.host}:${config.log.server.port}`,
-      method: 'POST',
-      json: {
-        "message": `${this.messages.map(_ => _.join('\n')).join('\n')}\n#id${message.orderId}\n(link)[${message.extra?.messageLink}]`
-      }
-    };
-
-    request(options, (error: any) => {
-      if (error) {
-        console.error('TG_WARNINGS', error);
-      }
-    });
+    const now = formatter.format(Date.now());
+    if (this.hasConsoleOutput) {
+      console.log(`${ message.orderId } ${ this.messages.map(_ => _.join(' ')).join(' | ') } | ${ now }`);
+    }
+    if (this.hasApiOutput) {
+      const options = {
+        uri: `http://${config.log.server.host}:${config.log.server.port}`,
+        method: 'POST',
+        json: {
+          "message": `${this.messages.map(_ => _.join('\n')).join('\n')}\n#id${message.orderId}\n(link)[${message.extra?.messageLink}]`
+        }
+      };
+      request(options, (error: any) => {
+        if (error) {
+          console.error('TG_WARNINGS', error);
+        }
+      });
+    }
   }
 } 

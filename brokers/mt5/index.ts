@@ -48,7 +48,7 @@ const starter: TStarter = async () => {
 */
 
 const handler: THandler = async (messageString: string) => {
-  const logger = new Logger(ELogLevel.ALL, config.log.hasConsoleOutput);
+  const logger = new Logger(config.log.hasConsoleOutput, config.log.hasApiOutput, config.log.isEnable);
   let message: TMessage;
   try {
     message = JSON.parse(messageString);
