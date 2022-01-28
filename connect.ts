@@ -18,20 +18,11 @@ const server = http.createServer((request, response) => {
         });
 
         request.on('end', async () => {
-            console.log(data);
-            
-            let dataJson;
-            try {
-              dataJson = JSON.parse(data);
-            } catch(e) {
-              console.error(e);
-              return;
-            }
-            try {
-              await handler(dataJson as TMessage);
-            } catch(error) {
-              console.error('ERROR handler', serializer(errorSerializer(error)));
-            }
+          try {
+            await handler(data);
+          } catch(error) {
+            console.error('ERROR OUT handler', serializer(error));
+          }
         })
     }
 

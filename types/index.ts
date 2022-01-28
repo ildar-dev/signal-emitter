@@ -46,6 +46,7 @@ export type TMessage = {
   percentage: number,
   analitics?: Record<string, unknown>,
   extra?: {
+    messageLink: string,
     expected: {
       income: number,
       price: number
@@ -53,7 +54,7 @@ export type TMessage = {
   }
 };
 
-export type THandler = (message: TMessage) => Promise<void>;
+export type THandler = (message: string) => Promise<void>;
 
 export type TStarter = () => Promise<void>;
 

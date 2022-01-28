@@ -1,5 +1,6 @@
 import { TMessage } from './types';
 import config from './config.json';
+import { threadId } from 'worker_threads';
 
 let request = require('request');
 
@@ -31,6 +32,7 @@ export const errorSerializer = (error: any): string => {
 }
 
 export const serializer = (value: any): string => {
+  value = errorSerializer(value);
   if (value === null || value === undefined) {
     return '';
   }
@@ -39,22 +41,21 @@ export const serializer = (value: any): string => {
   }
   if (Array.isArray(value)) {
    return value.map(serializer).join(', ')
-  } else {
-    switch (typeof value) {
-      case 'function': {
-        return value.toString();
-      }
-      case 'object': {
-        return `{ ${Object.entries(value).map(([key, v]) => `${key}: ${serializer(v)}`).join(', ')} }`
-      }
-      default: {
-        return value;
-      }
+  }
+  switch (typeof value) {
+    case 'function': {
+      return value.toString();
+    }
+    case 'object': {
+      return `${Object.entries(value).map(([key, v]) => `${key}: ${serializer(v)}`).join(', ')}`
+    }
+    default: {
+      return value;
     }
   }
 }
 export class Logger {
-  messages: TLog[] = [];
+  messages: string[][] = [];
 
   level!: ELogLevel;
 
@@ -71,28 +72,32 @@ export class Logger {
     this.isEnable = isEnable;
   }
 
-  add(message: TMessage, string: string, meta: any = null, extraMessage: string | null = null, level = this.level) {
-    if (!this.hasConsoleLog) {
+  add(...strings: string[]) {
+    this.messages.push(strings);
+  }
+
+  error(...strings: string[]) {
+    this.add('❌ ', ...strings);
+  }
+
+  push(message: TMessage) {
+    const now = formatter.format(Date.now());
+    if (this.hasConsoleLog) {
+      console.log(`${ message.orderId } ${ this.messages.map(_ => _.join(' ')).join(' | ') } | ${ now }`);
       return;
     }
-    console.log(level === ELogLevel.ERROR ? '\x1b[31m' : '\x1b[33m', ...[message.orderId, string, serializer(meta), formatter.format(Date.now())]);
-
     const options = {
       uri: `http://${config.log.server.host}:${config.log.server.port}`,
       method: 'POST',
       json: {
-        "message": `*#id${message.orderId}*\n${string}\n${serializer(meta)}\n${extraMessage}`
+        "message": `${this.messages.map(_ => _.join('\n')).join('\n')}\n#id${message.orderId}\n(link)[${message.extra?.messageLink}]`
       }
     };
 
     request(options, (error: any) => {
       if (error) {
-        console.log(error);
+        console.error('TG_WARNINGS', error);
       }
     });
-  }
-
-  error(message: TMessage, string: string, meta?: unknown, extraMessage: string | null = null) {
-    this.add(message, string, meta, extraMessage, ELogLevel.ERROR);
   }
 } 

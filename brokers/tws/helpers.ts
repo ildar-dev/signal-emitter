@@ -83,21 +83,21 @@ export const getOpenOrder = (message: TMessage): Order => ({
 
 export const modificatePendingOrder = async (orderType: EOrderType.TAKEPROFIT | EOrderType.STOPLOSS, message: TMessage, logger: Logger, ib: IBApiNext, contract: Contract, collection: Collection) => {
   const modificatedOrderId = (await collection.findOneAndDelete({ orderType, orderIdMessage: message.orderId })).value?.orderId as number;
-  logger.add(message.orderId, `MODIFICATED ${orderType} ID`, modificatedOrderId);
+  logger.add(message, `MODIFICATED ${orderType} ID`, modificatedOrderId);
 
   if (modificatedOrderId) {
     ib.cancelOrder(modificatedOrderId);
-    logger.add(message.orderId, 'DELETE', modificatedOrderId);
+    logger.add(message, 'DELETE', modificatedOrderId);
     const order = (orderType === EOrderType.TAKEPROFIT ? getTakeProfitOrder : getStopLossOrder)(message);
     const orderId = await ib.placeNewOrder(contract, order);
     await collection.insertOne(getDocument(orderId, orderType, message, order.totalQuantity as number));
   } else {
-    logger.error(message.orderId, `TRY MODIFY ${orderType} WITHOUT PREVIOUS`);
+    logger.error(message, `TRY MODIFY ${orderType} WITHOUT PREVIOUS`);
   }
 }
 
 export const openPendingOrder = async (orderType: EOrderType.TAKEPROFIT | EOrderType.STOPLOSS, message: TMessage, logger: Logger, ib: IBApiNext, contract: Contract): Promise<TDocumentOrder> => {
-  logger.add(message.orderId, `${orderType} OPEN`);
+  logger.add(message, `${orderType} OPEN`);
     
   const order = (orderType === EOrderType.TAKEPROFIT ? getTakeProfitOrder : getStopLossOrder)(message);
 

@@ -1,12 +1,10 @@
 import { THandler, TBroker, TStarter, TMessage, EType, EAction, ETypeContract } from '../../types';
 import { TDocument } from './types';
 import { db } from '../../mongodb';
-import { Logger, errorSerializer, ELogLevel } from '../../logger';
+import { Logger, errorSerializer, ELogLevel, serializer } from '../../logger';
 import config from '../../config.json';
 import MetaApi, { MetatraderAccount, MetatraderTradeResponse, PendingTradeOptions, StreamingMetaApiConnection } from 'metaapi.cloud-sdk';
 import { exit } from 'process';
-
-const logger = new Logger(ELogLevel.ALL, config.log.hasConsoleOutput, config.log.frequency, config.log.isEnable);
 
 const token = process.env.MT5_TOKEN as string;
 const login = process.env.MT5_LOGIN as string;
@@ -48,7 +46,25 @@ const starter: TStarter = async () => {
 Модификация и закрытие сейчас работают с тем учетом, что сигналы присылаются только по маркету
 поскольку расчитывем на то, что в опен-документе будет positionId
 */
-const handler: THandler = async (message: TMessage) => {
+
+const handler: THandler = async (messageString: string) => {
+  const logger = new Logger(ELogLevel.ALL, config.log.hasConsoleOutput);
+  let message: TMessage;
+  try {
+    message = JSON.parse(messageString);
+  } catch(error) {
+    logger.error(serializer(errorSerializer(error)));
+    return;
+  }
+  try {
+    await baseHandler(message, logger);
+  } catch(error) {
+    logger.error(serializer(errorSerializer(error)));
+  }
+  logger.push(message);
+}
+
+const baseHandler = async (message: TMessage, logger: Logger) => {
   const timeStart = performance.now();
   const orderId = message.orderId;
   const collection = db.collection(message.channelId + '_MT5');
@@ -60,7 +76,7 @@ const handler: THandler = async (message: TMessage) => {
         comment: `${message.price} : ${orderId}`,
       };
 
-      const order: any = message.contractType === ETypeContract.MARKET
+      const order = message.contractType === ETypeContract.MARKET
       ? await connection[message.action === EAction.BUY ? 'createMarketBuyOrder' : 'createMarketSellOrder'](ticker, TOTAL_QUANTITY, message.stopLoss, message.takeProfit, options)
       : await connection[message.action === EAction.BUY ? 'createLimitBuyOrder' : 'createLimitSellOrder'](ticker, TOTAL_QUANTITY, message.price, message.stopLoss, message.takeProfit, options)
 
@@ -69,7 +85,7 @@ const handler: THandler = async (message: TMessage) => {
         order,
       } as TDocument);
 
-      logger.add(message, 'OPEN', order);
+      logger.add('OPEN', `#pos_${order.positionId}`);
       break;
     }
     case EType.MODIFICATION: {
@@ -77,20 +93,20 @@ const handler: THandler = async (message: TMessage) => {
       try {
         document = await collection.findOne({ orderMessageId: orderId }) as TDocument;
       } catch (error) {
-        logger.error(message, `NOT EXIST ${orderId}`, errorSerializer(error));
+        logger.error(`MODIFICATE not found`, errorSerializer(error));
         break;
       }
       if (!document?.order) {
-        logger.error(message, 'TRY MODIFICATE without open', null);
+        logger.error('MODIFICATE without order');
         break;
       }
       let order: MetatraderTradeResponse | null = null;
       try {
         order = await connection.modifyPosition(document!.order.positionId, message.stopLoss, message.takeProfit); // modificate
-        logger.add(message, 'MODIFICATE position', null, `*#pos${document.order.positionId}*`);
+        logger.add('MODIFICATE position', `#pos_${document.order.positionId}`);
       } catch(error) {
         order = await connection.modifyOrder(document.order.orderId, message.price, message.stopLoss, message.takeProfit);
-        logger.add(message, 'MODIFICATE order', null);
+        logger.add('MODIFICATE order');
       }
       await collection.findOneAndUpdate({ orderMessageId: orderId }, { order }); // update info about order in mongo
       break;
@@ -100,20 +116,20 @@ const handler: THandler = async (message: TMessage) => {
       try {
         document = await collection.findOne({ orderMessageId: orderId }) as TDocument;
       } catch (error) {
-        logger.error(message, `NOT EXIST ${orderId}`, errorSerializer(error));
+        logger.error(`CLOSE not found`, errorSerializer(error));
         break;
       }
       if (!document?.order) {
-        logger.error(message, 'TRY CLOSE without open');
+        logger.error('CLOSE without order');
         break;
       }
       let order: MetatraderTradeResponse | null = null;
       try {
         order = await connection.closePosition(document.order.positionId, {});
-        logger.add(message, 'CLOSE position', order, `*#pos${document.order.positionId}*`);
+        logger.add('CLOSE', `#pos_${document.order.positionId}`);
       } catch(error) {
         order = await connection.cancelOrder(document.order.orderId);
-        logger.add(message, 'CLOSE (cancel) order');
+        logger.add('CLOSE (cancel) order');
       }
       break;
     }
@@ -121,7 +137,7 @@ const handler: THandler = async (message: TMessage) => {
 
   const timeFinish = performance.now();
   
-  logger.add(message, 'TIME', (timeFinish - timeStart).toFixed(2));
+  logger.add((timeFinish - timeStart).toFixed(2), ' ms');
 };
 
 export default {
