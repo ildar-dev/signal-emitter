@@ -69,7 +69,7 @@ const baseHandler = async (message: TMessage, logger: Logger) => {
   const orderId = message.orderId;
   const collection = db.collection(message.channelId + '_MT5');
   const ticker = message.ticker.split('.').join('');
-  const TOTAL_QUANTITY = 0.02;
+  const TOTAL_QUANTITY = ticker === 'XAUUSD' ? 0.01 : 0.02;
   switch (message.type) {
     case EType.OPEN: {
       const options: PendingTradeOptions = {
