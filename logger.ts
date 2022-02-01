@@ -1,6 +1,5 @@
 import { TMessage } from './types';
 import config from './config.json';
-import { threadId } from 'worker_threads';
 
 let request = require('request');
 
@@ -90,7 +89,7 @@ export class Logger {
         uri: `http://${config.log.server.host}:${config.log.server.port}`,
         method: 'POST',
         json: {
-          "message": `${this.messages.map(_ => _.join('\n')).join('\n')}${message.extra?.messageLink.length ? ` [\_](${message.extra?.messageLink})` : ''}`
+          "message": `${this.messages.map(_ => _.join('\n')).join('\n')}${message.extra?.messageLink.length ? ` [link](${message.extra?.messageLink})` : ''}`
         }
       };
       request(options, (error: any) => {
