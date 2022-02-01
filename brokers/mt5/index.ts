@@ -15,9 +15,9 @@ if (!token || !login) {
 }
 
 const api = new MetaApi(token, {
-  requestTimeout: 0.2,
-  connectTimeout: 0.2,
-  packetOrderingTimeout: 0.2,
+  requestTimeout: 10,
+  connectTimeout: 1,
+  packetOrderingTimeout: 1,
   retryOpts: {
     minDelayInSeconds: 0.5,
     maxDelayInSeconds: 30,
