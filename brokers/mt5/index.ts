@@ -48,6 +48,7 @@ const starter: TStarter = async () => {
 */
 
 const handler: THandler = async (messageString: string) => {
+  const timeStart = performance.now();
   const logger = new Logger(config.log.hasConsoleOutput, config.log.hasApiOutput, config.log.isEnable);
   let message: TMessage;
   try {
@@ -61,11 +62,18 @@ const handler: THandler = async (messageString: string) => {
   } catch(error) {
     logger.error(serializer(errorSerializer(error)));
   }
+
+  const timeFinish = performance.now();
+  
+  logger.add(`${(timeFinish - timeStart).toFixed(2)} ms`);
   logger.push(message);
 }
 
 const baseHandler = async (message: TMessage, logger: Logger) => {
-  const timeStart = performance.now();
+  if (!connection.synchronized) {
+    //@ts-ignore
+    await connection.waitSynchronized();
+  }
   const orderId = message.orderId;
   const collection = db.collection(message.channelId + '_MT5');
   const ticker = message.ticker.split('.').join('');
@@ -76,9 +84,10 @@ const baseHandler = async (message: TMessage, logger: Logger) => {
         comment: `${message.price} : ${orderId}`,
       };
 
+
       const order = message.contractType === ETypeContract.MARKET
-      ? await connection[message.action === EAction.BUY ? 'createMarketBuyOrder' : 'createMarketSellOrder'](ticker, TOTAL_QUANTITY, message.stopLoss, message.takeProfit, options)
-      : await connection[message.action === EAction.BUY ? 'createLimitBuyOrder' : 'createLimitSellOrder'](ticker, TOTAL_QUANTITY, message.price, message.stopLoss, message.takeProfit, options)
+      ? await connection[message.action === EAction.BUY ? 'createMarketBuyOrder' : 'createMarketSellOrder'](ticker, TOTAL_QUANTITY, undefined, undefined, options)
+      : await connection[message.action === EAction.BUY ? 'createLimitBuyOrder' : 'createLimitSellOrder'](ticker, TOTAL_QUANTITY, message.price, undefined, undefined, options)
 
       await collection.insertOne({
         orderMessageId: orderId,
@@ -134,10 +143,6 @@ const baseHandler = async (message: TMessage, logger: Logger) => {
       break;
     }
   }
-
-  const timeFinish = performance.now();
-  
-  logger.add(`${(timeFinish - timeStart).toFixed(2)} ms`);
 };
 
 export default {
