@@ -65,7 +65,7 @@ const handler: THandler = async (messageString: string) => {
 
   const timeFinish = performance.now();
   
-  logger.add(`__${(timeFinish - timeStart).toFixed(2)} ms__`);
+  logger.add(`_${(timeFinish - timeStart).toFixed(2)} ms_`);
   logger.push(message);
 }
 
