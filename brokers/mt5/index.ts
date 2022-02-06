@@ -1,7 +1,7 @@
 import { THandler, TBroker, TStarter, TMessage, EType, EAction, ETypeContract } from '../../types';
 import { TDocument } from './types';
 import { db } from '../../mongodb';
-import { Logger, errorSerializer, ELogLevel, serializer } from '../../logger';
+import { Logger, errorSerializer, serializer } from '../../logger';
 import config from '../../config.json';
 import MetaApi, { MetatraderAccount, MetatraderTradeResponse, PendingTradeOptions, StreamingMetaApiConnection } from 'metaapi.cloud-sdk';
 import { exit } from 'process';
@@ -15,7 +15,7 @@ if (!token || !login) {
 }
 
 const api = new MetaApi(token, {
-  requestTimeout: 10,
+  requestTimeout: 60,
   connectTimeout: 1,
   packetOrderingTimeout: 1,
   retryOpts: {
@@ -49,6 +49,8 @@ const starter: TStarter = async () => {
 
 const handler: THandler = async (messageString: string) => {
   const timeStart = performance.now();
+  //@ts-ignore ADDITIONAL SYNC
+  await connection.waitSynchronized();
   const logger = new Logger(config.log.hasConsoleOutput, config.log.hasApiOutput, config.log.isEnable);
   let message: TMessage;
   try {
@@ -70,14 +72,10 @@ const handler: THandler = async (messageString: string) => {
 }
 
 const baseHandler = async (message: TMessage, logger: Logger) => {
-  if (!connection.synchronized) {
-    //@ts-ignore
-    await connection.waitSynchronized();
-  }
   const orderId = message.orderId;
   const collection = db.collection(message.channelId + '_MT5');
   const ticker = message.ticker.split('.').join('');
-  const TOTAL_QUANTITY = ticker === 'XAUUSD' ? 0.01 : 0.02;
+  const TOTAL_QUANTITY = message.lot;
   switch (message.type) {
     case EType.OPEN: {
       const options: PendingTradeOptions = {

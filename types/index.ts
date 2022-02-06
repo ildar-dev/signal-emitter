@@ -44,6 +44,7 @@ export type TMessage = {
   previousStopLoss?: number,
   action: EAction,
   percentage: number,
+  lot: number,
   analitics?: Record<string, unknown>,
   extra?: {
     messageLink: string,
