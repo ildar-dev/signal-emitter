@@ -30,6 +30,24 @@ let connection: StreamingMetaApiConnection;
 
 const starter: TStarter = async () => {
   account = await api.metatraderAccountApi.getAccounts({}).then(_ => _.find(a => a.login === login && a.type.startsWith('cloud'))) as MetatraderAccount;
+  if (!account) {
+    console.log('✔️ Adding MT5 account to MetaApi');
+    const password = process.env.MT5_PASSWORD as string;
+    const server = process.env.MT5_SERVER as string;
+    // @ts-ignore
+    account = await api.metatraderAccountApi.createAccount({
+      name: 'Real account',
+      type: 'cloud',
+      login,
+      password,
+      server,
+      platform: 'mt5',
+      application: 'MetaApi',
+      magic: 777
+    });
+  } else {
+    console.log('✔️ MT5 account already added to MetaApi', account.id);
+  }
   console.log('✔️ Deploying account');
   await account.deploy();
   console.log('✔️ Waiting for API');
