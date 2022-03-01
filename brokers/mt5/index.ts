@@ -67,25 +67,28 @@ const starter: TStarter = async () => {
 
 const handler: THandler = async (messageString: string) => {
   const timeStart = performance.now();
-  //@ts-ignore ADDITIONAL SYNC
-  await connection.waitSynchronized();
   const logger = new Logger(config.log.hasConsoleOutput, config.log.hasApiOutput, config.log.isEnable);
-  let message: TMessage;
+  let message: TMessage | null = null;
   try {
     message = JSON.parse(messageString);
   } catch(error) {
     logger.error(serializer(errorSerializer(error)));
-    return;
   }
-  try {
-    await baseHandler(message, logger);
-  } catch(error) {
-    logger.error(serializer(errorSerializer(error)));
+  if (message) {
+    try {
+      await connection.waitSynchronized({
+        intervalInMilliseconds: 250,
+        timeoutInSeconds: 60,
+      });
+      await baseHandler(message, logger);
+    } catch(error) {
+      logger.error(serializer(errorSerializer(error)));
+    }
   }
 
   const timeFinish = performance.now();
   
-  logger.add(`_${(timeFinish - timeStart).toFixed(2)} ms_`);
+  logger.add(`${(timeFinish - timeStart).toFixed(2)} ms`);
   logger.push(message);
 }
 

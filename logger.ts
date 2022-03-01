@@ -76,12 +76,12 @@ export class Logger {
     this.add(`❌ ${strings[0]}`, ...strings.slice(1));
   }
 
-  push(message: TMessage) {
+  push(message: TMessage | null) {
     if (!this.isEnable) {
       return;
     }
     const now = formatter.format(Date.now());
-    if (this.hasConsoleOutput) {
+    if (this.hasConsoleOutput && message) {
       console.log(`${ message.orderId } ${ this.messages.map(_ => _.join(' ')).join(' | ') } | ${ now }`);
     }
     if (this.hasApiOutput) {
@@ -89,7 +89,7 @@ export class Logger {
         uri: `http://${config.log.server.host}:${config.log.server.port}`,
         method: 'POST',
         json: {
-          "message": `${this.messages.map(_ => _.join('\n')).join('\n')}${message.extra?.messageLink.length ? ` [link](${message.extra?.messageLink})` : ''}`
+          "message": `${this.messages.map(_ => _.join('\n')).join('\n')}${message?.extra?.messageLink?.length ? ` [link](${message.extra?.messageLink})` : ''}`
         }
       };
       request(options, (error: any) => {
