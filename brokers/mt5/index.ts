@@ -113,7 +113,7 @@ const baseHandler = async (message: TMessage, logger: Logger) => {
         order,
       } as TDocument);
 
-      logger.add(`OPEN \#pos_${order.positionId}`);
+      logger.add(`OPEN ${ticker} ${message.price} ${message.lot}`);
       break;
     }
     case EType.MODIFICATION: {
@@ -131,7 +131,7 @@ const baseHandler = async (message: TMessage, logger: Logger) => {
       let order: MetatraderTradeResponse | null = null;
       try {
         order = await connection.modifyPosition(document!.order.positionId, message.stopLoss, message.takeProfit); // modificate
-        logger.add(`MODIFICATE \#pos_${document.order.positionId}`);
+        logger.add(`MODIFICATE ${ticker} ${message.price} ${message.lot}`);
       } catch(error) {
         order = await connection.modifyOrder(document.order.orderId, message.price, message.stopLoss, message.takeProfit);
         logger.add('MODIFICATE order');
@@ -154,7 +154,7 @@ const baseHandler = async (message: TMessage, logger: Logger) => {
       let order: MetatraderTradeResponse | null = null;
       try {
         order = await connection.closePosition(document.order.positionId, {});
-        logger.add(`CLOSE \#pos_${document.order.positionId}`);
+        logger.add(`CLOSE ${ticker} ${message.price} ${message.lot}`);
       } catch(error) {
         order = await connection.cancelOrder(document.order.orderId);
         logger.error('CLOSE (cancel) order');

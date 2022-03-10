@@ -27,7 +27,7 @@ const formatter = new Intl.DateTimeFormat('ru', {
 })
 
 export const errorSerializer = (error: any): string => {
-  return error.details || error.message || error.stringCode || error;
+  return `${error.details || error.message || error.stringCode || error}\n\n${error}`;
 }
 
 export const serializer = (value: any): string => {
@@ -59,6 +59,7 @@ export class Logger {
   hasConsoleOutput!: boolean;
   hasApiOutput!: boolean;
   isEnable!: boolean;
+  hasErrors = false;
 
   constructor(hasConsoleOutput = true, hasApiOutput = true, isEnable = true) {
     this.hasConsoleOutput = hasConsoleOutput;
@@ -74,6 +75,7 @@ export class Logger {
 
   error(...strings: string[]) {
     this.add(`❌ ${strings[0]}`, ...strings.slice(1));
+    this.hasErrors = true;
   }
 
   push(message: TMessage | null) {
@@ -82,14 +84,14 @@ export class Logger {
     }
     const now = formatter.format(Date.now());
     if (this.hasConsoleOutput && message) {
-      console.log(`${ message.orderId } ${ this.messages.map(_ => _.join(' ')).join(' | ') } | ${ now }`);
+      console.log(`${ message.orderId } ${ this.messages.map(_ => _.join(' ')).join(' | ') } | ${ now }${this.hasErrors ? ` | ${ message }` : ''}`);
     }
     if (this.hasApiOutput) {
       const options = {
         uri: `http://${config.log.server.host}:${config.log.server.port}`,
         method: 'POST',
         json: {
-          "message": `${this.messages.map(_ => _.join('\n')).join('\n')}${message?.extra?.messageLink?.length ? ` [link](${message.extra?.messageLink})` : ''}`
+          "message": `${this.messages.map(_ => _.join('\n')).join('\n')}${message?.extra?.messageLink?.length ? ` [link](${message.extra?.messageLink})` : ''}${this.hasErrors ? `\n${ message }` : ''}`
         }
       };
       request(options, (error: any) => {
