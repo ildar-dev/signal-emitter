@@ -88,7 +88,12 @@ const handler: THandler = async (messageString: string) => {
 
   const timeFinish = performance.now();
   
-  logger.add(`${(timeFinish - timeStart).toFixed(2)} ms`);
+  logger.add(`${(timeFinish - timeStart).toFixed(0)} ms`);
+  if (logger.hasErrors) {
+    logger.add(Object.entries(connection.healthMonitor.healthStatus)
+    .map(([key, value]) => `${key === 'message' ? '' : `${key}: `}${typeof value == 'boolean' ? (value ? '✔️' : '❌') : value }`)
+    .join('\n'))
+  }
   logger.push(message);
 }
 

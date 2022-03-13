@@ -1,7 +1,6 @@
 import { TMessage } from './types';
 import config from './config.json';
-
-let request = require('request');
+import telegramSender from './telegramSender';
 
 export enum ELogLevel {
   ALL = 'ALL',
@@ -84,21 +83,10 @@ export class Logger {
     }
     const now = formatter.format(Date.now());
     if (this.hasConsoleOutput && message) {
-      console.log(`${ message.orderId } ${ this.messages.map(_ => _.join(' ')).join(' | ') } | ${ now }${this.hasErrors ? ` | ${ message }` : ''}`);
+      console.log(`${ message.orderId } ${ this.messages.map(_ => _.join(' ')).join(' | ') } | ${ now }${this.hasErrors ? ` | ${ serializer(message) }` : ''}`);
     }
     if (this.hasApiOutput) {
-      const options = {
-        uri: `http://${config.log.server.host}:${config.log.server.port}`,
-        method: 'POST',
-        json: {
-          "message": `${this.messages.map(_ => _.join('\n')).join('\n')}${message?.extra?.messageLink?.length ? ` [link](${message.extra?.messageLink})` : ''}${this.hasErrors ? `\n${ message }` : ''}`
-        }
-      };
-      request(options, (error: any) => {
-        if (error) {
-          console.error('TG_WARNINGS', error);
-        }
-      });
+      telegramSender(`${this.messages.map(_ => _.join('\n')).join('\n')}${this.hasErrors ? `\n${ serializer(message) }` : ''}${message?.extra?.messageLink?.length ? `\n[link](${message.extra?.messageLink})` : ''}`);
     }
   }
 } 
