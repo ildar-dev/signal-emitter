@@ -25,8 +25,11 @@ const formatter = new Intl.DateTimeFormat('ru', {
   timeZone: config.log.timeZone,
 })
 
-export const errorSerializer = (error: any): string => {
-  return `${error.details || error.message || error.stringCode || error}\n\n${error}`;
+export const errorSerializer = (error: any, hasFullError = false): string => {
+  const result = error.details || error.message || error.stringCode || error;
+  return hasFullError
+  ? (result !== error ? `${result}\n${error}` : result)
+  : result;
 }
 
 export const serializer = (value: any): string => {
@@ -85,8 +88,8 @@ export class Logger {
     if (this.hasConsoleOutput && message) {
       console.log(`${ message.orderId } ${ this.messages.map(_ => _.join(' ')).join(' | ') } | ${ now }${this.hasErrors ? ` | ${ serializer(message) }` : ''}`);
     }
-    if (this.hasApiOutput) {
-      telegramSender(`${this.messages.map(_ => _.join('\n')).join('\n')}${this.hasErrors ? `\n${ serializer(message) }` : ''}${message?.extra?.messageLink?.length ? `\n[link](${message.extra?.messageLink})` : ''}`);
+    if (this.hasApiOutput && this.hasErrors) {
+      telegramSender(`${this.messages.map(_ => _.join('\n')).join('\n')}\n${JSON.stringify(message)}${message?.extra?.messageLink?.length ? `\n[link](${message.extra?.messageLink})` : ''}`);
     }
   }
 } 

@@ -72,7 +72,7 @@ const handler: THandler = async (messageString: string) => {
   try {
     message = JSON.parse(messageString);
   } catch(error) {
-    logger.error(serializer(errorSerializer(error)));
+    logger.error(serializer(errorSerializer(error, true)));
   }
   if (message) {
     try {
@@ -82,7 +82,7 @@ const handler: THandler = async (messageString: string) => {
       });
       await baseHandler(message, logger);
     } catch(error) {
-      logger.error(serializer(errorSerializer(error)));
+      logger.error(errorSerializer(error, true));
     }
   }
 
@@ -90,9 +90,15 @@ const handler: THandler = async (messageString: string) => {
   
   logger.add(`${(timeFinish - timeStart).toFixed(0)} ms`);
   if (logger.hasErrors) {
-    logger.add(Object.entries(connection.healthMonitor.healthStatus)
-    .map(([key, value]) => `${key === 'message' ? '' : `${key}: `}${typeof value == 'boolean' ? (value ? '✔️' : '❌') : value }`)
-    .join('\n'))
+    logger.add(
+    [...
+      [
+        ...[['restApiHealthy', connection.healthMonitor.serverHealthStatus.restApiHealthy]],
+        ...Object.entries(connection.healthMonitor.healthStatus),
+      ]
+      .map(([key, value]) => `${key === 'message' ? '' : `${key}: `}${typeof value == 'boolean' ? (value ? '✔️' : '❌') : value }`)
+      , `uptime: ${connection.healthMonitor.uptime}`
+    ].join('\n'))
   }
   logger.push(message);
 }
@@ -126,7 +132,7 @@ const baseHandler = async (message: TMessage, logger: Logger) => {
       try {
         document = await collection.findOne({ orderMessageId: orderId }) as TDocument;
       } catch (error) {
-        logger.error(`MODIFICATE not found`, errorSerializer(error));
+        logger.error(`MODIFICATE not found`, errorSerializer(error, true));
         break;
       }
       if (!document?.order) {
@@ -149,7 +155,7 @@ const baseHandler = async (message: TMessage, logger: Logger) => {
       try {
         document = await collection.findOne({ orderMessageId: orderId }) as TDocument;
       } catch (error) {
-        logger.error(`CLOSE not found`, errorSerializer(error));
+        logger.error(`CLOSE not found`, errorSerializer(error, true));
         break;
       }
       if (!document?.order) {
