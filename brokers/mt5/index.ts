@@ -97,7 +97,7 @@ const handler: THandler = async (messageString: string) => {
         ...Object.entries(connection.healthMonitor.healthStatus),
       ]
       .map(([key, value]) => `${key === 'message' ? '' : `${key}: `}${typeof value == 'boolean' ? (value ? '✔️' : '❌') : value }`)
-      , `uptime: ${connection.healthMonitor.uptime}`
+      , `uptime: ${serializer(connection.healthMonitor.uptime)}`
     ].join('\n'))
   }
   logger.push(message);
