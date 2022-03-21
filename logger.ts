@@ -89,7 +89,7 @@ export class Logger {
       console.log(`${ message.orderId } ${ this.messages.map(_ => _.join(' ')).join(' | ') } | ${ now }${this.hasErrors ? ` | ${ serializer(message) }` : ''}`);
     }
     if (this.hasApiOutput && this.hasErrors) {
-      telegramSender(`${this.messages.map(_ => _.join('\n')).join('\n')}\n${JSON.stringify(message)}${(message?.extra?.messageLink?.length && false) ? `\n[link](${message.extra?.messageLink})` : ''}`);
+      telegramSender(`${this.messages.map(_ => _.join('\n')).join('\n')}\n${JSON.stringify(message)}${(message?.extra?.messageLink?.length && false) ? `\n[link](${message?.extra?.messageLink})` : ''}`);
     }
   }
 } 
